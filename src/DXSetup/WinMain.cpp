@@ -4,6 +4,7 @@
 #include "DDSTextureLoader.h"
 #include "SimpleMath.h"
 #include "SpriteFont.h"
+#include "Sprite.h"
 
 class TestApp : public DXApp
 {
@@ -19,19 +20,20 @@ private:
 
 	std::unique_ptr<DirectX::SpriteBatch> spriteBatch;
 	std::unique_ptr<DirectX::SpriteFont> spriteFont;
-	ID3D11ShaderResourceView* m_pTexture;
+
+	Sprite* sprite;
 
 };
 
 TestApp::TestApp(HINSTANCE hInstance)
 	: DXApp(hInstance)
 {
-	m_AppTitle = "TUTORIAL 03 - DIRECTX TOOLKIT";
+	m_AppTitle = "TUTORIAL 04 - SPRITE CLASS";
 }
 
 TestApp::~TestApp()
 {
-	Memory::SafeRelease(m_pTexture);
+	Memory::SafeDelete(sprite);
 }
 
 bool TestApp::Init()
@@ -45,14 +47,16 @@ bool TestApp::Init()
 	// CREATE SPRITEFONT OBJECT
 	spriteFont.reset(new DirectX::SpriteFont(m_pDevice, L"assets/Arial.spritefont"));
 
-	// IMPORT TEXTURE FOR RENDERING
-	HR(DirectX::CreateDDSTextureFromFile(m_pDevice, L"assets/Mushroom.DDS", nullptr, &m_pTexture))
+	sprite = new Sprite(DirectX::SimpleMath::Vector2(100, 100));
+	sprite->Load(m_pDevice, L"assets/Mushroom.DDS");
 
 	return true;
 }
 
 void TestApp::Update(float dt)
 {
+	if(GetAsyncKeyState('D'))
+		sprite->SetPosition(DirectX::SimpleMath::Vector2(300, 300));
 }
 
 void TestApp::Render(float dt)
@@ -61,8 +65,8 @@ void TestApp::Render(float dt)
 
 	spriteBatch->Begin();
 
-	 // DRAW SPRITES, FONTS ETC.
-	spriteBatch->Draw(m_pTexture, DirectX::SimpleMath::Vector2(100, 100));
+	// DRAW SPRITE
+	sprite->Draw(spriteBatch.get());
 
 	// DRAW FONT
 	spriteFont->DrawString(spriteBatch.get(), L"Hello, World", DirectX::SimpleMath::Vector2(300, 300));
