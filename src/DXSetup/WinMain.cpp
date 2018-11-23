@@ -15,6 +15,7 @@ public:
 TestApp::TestApp(HINSTANCE hInstance)
 	: DXApp(hInstance)
 {
+	m_AppTitle = "TUTORIAL 02 - DIRECTX ERROR HANDLING";
 }
 
 TestApp::~TestApp()
@@ -35,9 +36,9 @@ void TestApp::Update(float dt)
 
 void TestApp::Render(float dt)
 {
-	m_pImmediateContext->ClearRenderTargetView(m_pRenderTargetView, DirectX::Colors::Purple);
+	m_pImmediateContext->ClearRenderTargetView(m_pRenderTargetView, DirectX::Colors::SlateGray);
 
-	m_pSwapChain->Present(0, 0);
+	HR(m_pSwapChain->Present(0, 0));
 }
 
 int WINAPI WinMain(

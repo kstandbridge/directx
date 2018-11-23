@@ -192,8 +192,9 @@ bool DXApp::InitDirect3D()
 
 	// CREATE RENDER TARGET VIEW
 	ID3D11Texture2D* m_pBackBufferTex = 0;
-	m_pSwapChain->GetBuffer(NULL, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&m_pBackBufferTex));
-	m_pDevice->CreateRenderTargetView(m_pBackBufferTex, nullptr, &m_pRenderTargetView);
+	HR(m_pSwapChain->GetBuffer(NULL, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&m_pBackBufferTex)));
+	HR(m_pDevice->CreateRenderTargetView(m_pBackBufferTex, nullptr, &m_pRenderTargetView));
+	Memory::SafeRelease(m_pBackBufferTex);
 
 	// BIND RENDER TARGET VIEW
 	m_pImmediateContext->OMSetRenderTargets(1, &m_pRenderTargetView, nullptr);
