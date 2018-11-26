@@ -71,6 +71,21 @@ void Game::Render()
     Clear();
 
     // TODO: Add your rendering code here.
+	float time = float(m_timer.GetTotalSeconds());
+
+
+	m_spriteBatch->Begin();
+	// m_spriteBatch->Begin(SpriteSortMode_Deferred, m_states->NonPremultiplied()); // supply our own ID3D11BlendState to use straight alpha blending
+	// m_spriteBatch->Begin(SpriteSortMode_Deferred, nullptr, m_states->LinearWrap()); // Tile
+
+	m_spriteBatch->Draw(m_background.Get(), m_fullScreenRect);
+
+	// m_spriteBatch->Draw(m_texture.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
+	m_spriteBatch->Draw(m_texture.Get(), m_screenPos, nullptr, Colors::White, cosf(time) * 4.f, m_origin); // Rotation
+	// m_spriteBatch->Draw(m_texture.Get(), m_screenPos, nullptr, Colors::Green, 0.f, m_origin);	// Add a green tint
+	// m_spriteBatch->Draw(m_texture.Get(), m_screenPos, &m_tileRect, Colors::White, 0.f, m_origin);	// Tiling
+
+	m_spriteBatch->End();
 
     Present();
 }
@@ -214,6 +229,32 @@ void Game::CreateDevice()
     DX::ThrowIfFailed(context.As(&m_d3dContext));
 
     // TODO: Initialize device dependent objects here (independent of window size).
+	m_spriteBatch = std::make_unique<SpriteBatch>(m_d3dContext.Get());
+
+	ComPtr<ID3D11Resource> resource;
+	// DX::ThrowIfFailed(CreateWICTextureFromFile(m_d3dDevice.Get(), L"cat.png", resource.GetAddressOf(), m_texture.ReleaseAndGetAddressOf()));
+	DX::ThrowIfFailed(CreateDDSTextureFromFile(m_d3dDevice.Get(), L"cat.dds", resource.GetAddressOf(), m_texture.ReleaseAndGetAddressOf()));
+
+	ComPtr<ID3D11Texture2D> cat;
+	DX::ThrowIfFailed(resource.As(&cat));
+
+	CD3D11_TEXTURE2D_DESC catDesc;
+	cat->GetDesc(&catDesc);
+
+	m_origin.x = float(catDesc.Width / 2);
+	m_origin.y = float(catDesc.Height / 2);
+
+	// m_origin.x = float(catDesc.Width * 2);	// For tiling
+	// m_origin.y = float(catDesc.Height * 2);	// For tiling
+
+	m_tileRect.left = catDesc.Width * 2;
+	m_tileRect.right = catDesc.Width * 6;
+	m_tileRect.top = catDesc.Height * 2;
+	m_tileRect.bottom = catDesc.Height * 6;
+
+	m_states = std::make_unique<CommonStates>(m_d3dDevice.Get());
+
+	DX::ThrowIfFailed(CreateWICTextureFromFile(m_d3dDevice.Get(), L"sunset.jpg", nullptr, m_background.ReleaseAndGetAddressOf()));
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.
@@ -310,11 +351,22 @@ void Game::CreateResources()
     DX::ThrowIfFailed(m_d3dDevice->CreateDepthStencilView(depthStencil.Get(), &depthStencilViewDesc, m_depthStencilView.ReleaseAndGetAddressOf()));
 
     // TODO: Initialize windows-size dependent objects here.
+	m_screenPos.x = backBufferWidth / 2.f;
+	m_screenPos.y = backBufferHeight / 2.0f;
+
+	m_fullScreenRect.left = 0;
+	m_fullScreenRect.top = 0;
+	m_fullScreenRect.right = backBufferWidth;
+	m_fullScreenRect.bottom = backBufferHeight;
 }
 
 void Game::OnDeviceLost()
 {
     // TODO: Add Direct3D resource cleanup here.
+	m_texture.Reset();
+	m_spriteBatch.reset();
+	m_states.reset();
+	m_background.Reset();
 
     m_depthStencilView.Reset();
     m_renderTargetView.Reset();
