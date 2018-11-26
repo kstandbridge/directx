@@ -55,7 +55,8 @@ void Game::Update(DX::StepTimer const& timer)
     float elapsedTime = float(timer.GetElapsedSeconds());
 
     // TODO: Add your game logic here.
-    elapsedTime;
+	m_ship->Update(elapsedTime);
+	m_stars->Update(elapsedTime * 500);
 }
 
 // Draws the scene.
@@ -70,6 +71,13 @@ void Game::Render()
     Clear();
 
     // TODO: Add your rendering code here.
+	m_spriteBatch->Begin();
+
+	m_stars->Draw(m_spriteBatch.get());
+	m_ship->Draw(m_spriteBatch.get(), m_shipPos);
+
+	m_spriteBatch->End();
+
 
     Present();
 }
@@ -213,6 +221,16 @@ void Game::CreateDevice()
     DX::ThrowIfFailed(context.As(&m_d3dContext));
 
     // TODO: Initialize device dependent objects here (independent of window size).
+	m_spriteBatch = std::make_unique<SpriteBatch>(m_d3dContext.Get());
+
+	DX::ThrowIfFailed(CreateWICTextureFromFile(m_d3dDevice.Get(), L"shipanimated.png", nullptr, m_texture.ReleaseAndGetAddressOf()));
+
+	m_ship = std::make_unique<AnimatedTexture>();
+	m_ship->Load(m_texture.Get(), 4, 20);
+
+	DX::ThrowIfFailed(CreateWICTextureFromFile(m_d3dDevice.Get(), L"starfield.png", nullptr, m_backgroundTex.ReleaseAndGetAddressOf()));
+	m_stars = std::make_unique<ScrollingBackground>();
+	m_stars->Load(m_backgroundTex.Get());
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.
@@ -309,11 +327,21 @@ void Game::CreateResources()
     DX::ThrowIfFailed(m_d3dDevice->CreateDepthStencilView(depthStencil.Get(), &depthStencilViewDesc, m_depthStencilView.ReleaseAndGetAddressOf()));
 
     // TODO: Initialize windows-size dependent objects here.
+	m_shipPos.x = float(backBufferWidth / 2);
+	m_shipPos.y = float((backBufferHeight / 2) + (backBufferHeight / 4));
+
+	m_stars->SetWindow(backBufferWidth, backBufferHeight);
 }
 
 void Game::OnDeviceLost()
 {
     // TODO: Add Direct3D resource cleanup here.
+	m_ship.reset();
+	m_spriteBatch.reset();
+	m_texture.Reset();
+
+	m_stars.reset();
+	m_backgroundTex.Reset();
 
     m_depthStencilView.Reset();
     m_renderTargetView.Reset();

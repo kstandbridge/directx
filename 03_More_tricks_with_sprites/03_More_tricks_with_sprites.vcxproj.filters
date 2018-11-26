@@ -10,6 +10,8 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="StepTimer.h" />
+    <ClInclude Include="AnimatedTexture.h" />
+    <ClInclude Include="ScrollingBackground.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -21,6 +23,12 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="directx.ico">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="shipanimated.png">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="starfield.png">
       <Filter>Assets</Filter>
     </Image>
   </ItemGroup>
