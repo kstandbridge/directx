@@ -71,6 +71,24 @@ void Game::Render()
 
     // TODO: Add your rendering code here.
 
+	const char* ascii = "Hello World";
+	std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+	std::wstring output = converter.from_bytes(ascii);
+
+	m_spriteBatch->Begin();
+
+	SimpleMath::Vector2 origin = m_font->MeasureString(output.c_str()) / 2.f;
+
+	m_font->DrawString(m_spriteBatch.get(), output.c_str(), m_fontPos + SimpleMath::Vector2(1.f, 1.f), Colors::Black, 0.f, origin);
+	m_font->DrawString(m_spriteBatch.get(), output.c_str(), m_fontPos + SimpleMath::Vector2(-1.f, 1.f), Colors::Black, 0.f, origin);
+	m_font->DrawString(m_spriteBatch.get(), output.c_str(), m_fontPos + SimpleMath::Vector2(-1.f, -1.f), Colors::Black, 0.f, origin);
+	m_font->DrawString(m_spriteBatch.get(), output.c_str(), m_fontPos + SimpleMath::Vector2(1.f, -1.f), Colors::Black, 0.f, origin);
+
+
+	m_font->DrawString(m_spriteBatch.get(), output.c_str(), m_fontPos, Colors::White, 0.f, origin);
+
+	m_spriteBatch->End();
+
     Present();
 }
 
@@ -213,6 +231,8 @@ void Game::CreateDevice()
     DX::ThrowIfFailed(context.As(&m_d3dContext));
 
     // TODO: Initialize device dependent objects here (independent of window size).
+	m_font = std::make_unique<SpriteFont>(m_d3dDevice.Get(), L"myfile.spritefont");
+	m_spriteBatch = std::make_unique<SpriteBatch>(m_d3dContext.Get());
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.
@@ -309,11 +329,15 @@ void Game::CreateResources()
     DX::ThrowIfFailed(m_d3dDevice->CreateDepthStencilView(depthStencil.Get(), &depthStencilViewDesc, m_depthStencilView.ReleaseAndGetAddressOf()));
 
     // TODO: Initialize windows-size dependent objects here.
+	m_fontPos.x = backBufferWidth / 2.f;
+	m_fontPos.y = backBufferHeight / 2.f;
 }
 
 void Game::OnDeviceLost()
 {
     // TODO: Add Direct3D resource cleanup here.
+	m_font.reset();
+	m_spriteBatch.reset();
 
     m_depthStencilView.Reset();
     m_renderTargetView.Reset();
