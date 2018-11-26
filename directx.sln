@@ -7,6 +7,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DXSetup", "src\DXSetup\DXSe
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectXTK_Desktop_2017_Win10", "src\DirectXTK-nov2018\DirectXTK_Desktop_2017_Win10.vcxproj", "{E0B52AE7-E160-4D32-BF3F-910B785E5A8E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "01_The_Basic_Game_Loop", "src\DirectXTK_Getting_Started\01_The_Basic_Game_Loop\01_The_Basic_Game_Loop.vcxproj", "{9895AFCA-6CE1-4E66-A1E5-4708D77CF101}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DirectXTK_Getting_Started", "DirectXTK_Getting_Started", "{B0347AF9-E19F-4C13-900E-195627B3B32A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "From Scratch", "From Scratch", "{A7747A91-1175-49ED-BF21-41E8DDA7E6FF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,9 +37,22 @@ Global
 		{E0B52AE7-E160-4D32-BF3F-910B785E5A8E}.Release|x64.Build.0 = Release|x64
 		{E0B52AE7-E160-4D32-BF3F-910B785E5A8E}.Release|x86.ActiveCfg = Release|Win32
 		{E0B52AE7-E160-4D32-BF3F-910B785E5A8E}.Release|x86.Build.0 = Release|Win32
+		{9895AFCA-6CE1-4E66-A1E5-4708D77CF101}.Debug|x64.ActiveCfg = Debug|x64
+		{9895AFCA-6CE1-4E66-A1E5-4708D77CF101}.Debug|x64.Build.0 = Debug|x64
+		{9895AFCA-6CE1-4E66-A1E5-4708D77CF101}.Debug|x86.ActiveCfg = Debug|Win32
+		{9895AFCA-6CE1-4E66-A1E5-4708D77CF101}.Debug|x86.Build.0 = Debug|Win32
+		{9895AFCA-6CE1-4E66-A1E5-4708D77CF101}.Release|x64.ActiveCfg = Release|x64
+		{9895AFCA-6CE1-4E66-A1E5-4708D77CF101}.Release|x64.Build.0 = Release|x64
+		{9895AFCA-6CE1-4E66-A1E5-4708D77CF101}.Release|x86.ActiveCfg = Release|Win32
+		{9895AFCA-6CE1-4E66-A1E5-4708D77CF101}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{4F98CD32-8445-461A-BE22-E880264E78AC} = {A7747A91-1175-49ED-BF21-41E8DDA7E6FF}
+		{E0B52AE7-E160-4D32-BF3F-910B785E5A8E} = {A7747A91-1175-49ED-BF21-41E8DDA7E6FF}
+		{9895AFCA-6CE1-4E66-A1E5-4708D77CF101} = {B0347AF9-E19F-4C13-900E-195627B3B32A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0F50A691-C454-4FE9-82E1-307684DF8DBF}
