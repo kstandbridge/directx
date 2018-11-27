@@ -10,6 +10,7 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="StepTimer.h" />
+    <ClInclude Include="ReadData.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -23,6 +24,12 @@
     <Image Include="directx.ico">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="billard15.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="envmap.dds">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="settings.manifest">
@@ -31,5 +38,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="dgslsphere.inc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ShaderGraphContentTask Include="MyDGSLShader.dgsl" />
   </ItemGroup>
 </Project>
