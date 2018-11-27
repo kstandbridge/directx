@@ -21,6 +21,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "05_Simple_rendering", "src\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "06_3D_shapes", "src\DirectXTK_Getting_Started\06_3D_shapes\06_3D_shapes.vcxproj", "{B5678654-0FE6-43A9-8BE5-94C66C2C0B01}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "07_Rending_a_model", "src\DirectXTK_Getting_Started\07_Rending_a_model\07_Rending_a_model.vcxproj", "{1C49C6B4-B4A1-4CE5-819F-AF09F2C9804C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -85,6 +87,14 @@ Global
 		{B5678654-0FE6-43A9-8BE5-94C66C2C0B01}.Release|x64.Build.0 = Release|x64
 		{B5678654-0FE6-43A9-8BE5-94C66C2C0B01}.Release|x86.ActiveCfg = Release|Win32
 		{B5678654-0FE6-43A9-8BE5-94C66C2C0B01}.Release|x86.Build.0 = Release|Win32
+		{1C49C6B4-B4A1-4CE5-819F-AF09F2C9804C}.Debug|x64.ActiveCfg = Debug|x64
+		{1C49C6B4-B4A1-4CE5-819F-AF09F2C9804C}.Debug|x64.Build.0 = Debug|x64
+		{1C49C6B4-B4A1-4CE5-819F-AF09F2C9804C}.Debug|x86.ActiveCfg = Debug|Win32
+		{1C49C6B4-B4A1-4CE5-819F-AF09F2C9804C}.Debug|x86.Build.0 = Debug|Win32
+		{1C49C6B4-B4A1-4CE5-819F-AF09F2C9804C}.Release|x64.ActiveCfg = Release|x64
+		{1C49C6B4-B4A1-4CE5-819F-AF09F2C9804C}.Release|x64.Build.0 = Release|x64
+		{1C49C6B4-B4A1-4CE5-819F-AF09F2C9804C}.Release|x86.ActiveCfg = Release|Win32
+		{1C49C6B4-B4A1-4CE5-819F-AF09F2C9804C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,6 +107,7 @@ Global
 		{126DEAE5-2A9D-4974-8593-BDD226A3586B} = {B0347AF9-E19F-4C13-900E-195627B3B32A}
 		{2A0C6215-DF81-4E29-A796-154AABFC304F} = {B0347AF9-E19F-4C13-900E-195627B3B32A}
 		{B5678654-0FE6-43A9-8BE5-94C66C2C0B01} = {B0347AF9-E19F-4C13-900E-195627B3B32A}
+		{1C49C6B4-B4A1-4CE5-819F-AF09F2C9804C} = {B0347AF9-E19F-4C13-900E-195627B3B32A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0F50A691-C454-4FE9-82E1-307684DF8DBF}
