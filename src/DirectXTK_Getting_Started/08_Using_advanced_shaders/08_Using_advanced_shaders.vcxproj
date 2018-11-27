@@ -172,7 +172,9 @@
     <ResourceCompile Include="resource.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="cubemap.dds" />
     <Image Include="directx.ico" />
+    <Image Include="wood.DDS" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="settings.manifest" />

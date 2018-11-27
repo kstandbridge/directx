@@ -59,4 +59,16 @@ private:
 
     // Rendering loop timer.
     DX::StepTimer                                   m_timer;
+
+	DirectX::SimpleMath::Matrix	m_world;
+	DirectX::SimpleMath::Matrix	m_view;
+	DirectX::SimpleMath::Matrix	m_proj;
+
+	std::unique_ptr<DirectX::CommonStates> m_states;
+	std::unique_ptr<DirectX::GeometricPrimitive> m_shape;
+	std::unique_ptr<DirectX::EnvironmentMapEffect> m_effect;
+
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> m_inputLayout;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_texture;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_cubemap;
 };
