@@ -173,6 +173,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="directx.ico" />
+    <Image Include="roomtexture.dds" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="settings.manifest" />
