@@ -15,10 +15,10 @@
 
 // bell0bytes core
 #include "window.h"
+#include "timer.h"
 
 // bell0bytes util
 #include "expected.h"
-
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
 namespace core
@@ -30,31 +30,41 @@ namespace core
 		HINSTANCE appInstance;					// handle to an instance of the application
 		Window* appWindow;						// the application window (i.e. game window)
 
-		// logger state
-		bool activeLogger;						// true iff the logging service was successfully registered
-
 		// folder paths
 		std::wstring pathToMyDocuments;			// path to the My Documents folder
 		std::wstring pathToLogFiles;			// path to the folder containing log files
 		std::wstring pathToConfigurationFiles;	// path to the folder containing the configuration files
 		bool validConfigurationFile;			// true iff there was a valid configuration file at startup
 
+		// logger state
+		bool activeLogger;						// true iff the logging service was successfully registered
+
 		// game state
 		bool isPaused;							// true iff the game is paused 
+		bool hasStarted;						// true iff this class has been fully initialized
+
+		// timer
+		Timer* timer;							// high-precision timer
+		int fps;								// frames per second
+		double mspf;							// milliseconds per frame
 
 		// constructor and destructor
 		DirectXApp(HINSTANCE hInstance);
 		~DirectXApp();
 
-		// game loop
-		util::Expected<int> run();				// enters the main event loop
-		
-		// virtual methods, must be overriden
+		// timer functions
+		void calculateFrameStatistics();
+
+		// initialization and shutdown
 		virtual util::Expected<void> init();								// initializes the DirectX application
 		virtual void shutdown(util::Expected<void>* expected = NULL);		// clean up and shutdown the DirectX application
 
+		// game loop
+		virtual util::Expected<int> run();		// enters the main event loop
+		void update(double deltaTime);			// update the game world
+
 		// resize functions
-		void onResize();						// resize game graphics
+		virtual void onResize();				// resize game graphics
 
 		// helper functions
 		bool getPathToMyDocuments();			// stores the path to the My Documents folder in the appropriate member variable

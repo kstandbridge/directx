@@ -8,6 +8,8 @@
 *			- 06/07/2017 - Expected!
 *			- 07/07/2017 - A Thread-Safe Logger
 *			- 08/07/2017 - Of the Moon and the Sun
+*			- 08/07/2017 - Handling Important Events
+*			- 09/07/2017 - Keeping Track of Time
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -44,9 +46,10 @@ public:
 	// override virtual functions
 	util::Expected<void> init() override;								// game initialization
 	void shutdown(util::Expected<void>* expected = NULL) override;		// cleans up and shuts the game down (handles errors)
+	void onResize() override;											// resize game graphics
 
 	// run the game
-	util::Expected<int> run();
+	util::Expected<int> run() override;
 };
 
 // FUNCTIONS ////////////////////////////////////////////////////////////////////////////
@@ -109,6 +112,13 @@ util::Expected<int> DirectXGame::run()
 {
 	// run the core DirectX application
 	return DirectXApp::run();
+}
+
+// resize graphics
+void DirectXGame::onResize()
+{
+	// call base method
+	return DirectXApp::onResize();
 }
 
 // shutdown

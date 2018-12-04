@@ -22,7 +22,7 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructors /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeLogger(false), validConfigurationFile(false), isPaused(true) { }
+	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeLogger(false), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), hasStarted(false) { }
 	DirectXApp::~DirectXApp()
 	{
 		shutdown();
@@ -54,6 +54,13 @@ namespace core
 		if (!checkConfigurationFile())
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("Non-existent or invalid configuration file. Starting with default settings.");
 
+		// create the game timer
+		try { timer = new Timer(); }
+		catch (std::runtime_error)
+		{
+			return std::runtime_error("The high-precision timer could not be started!");
+		}
+
 		// create the application window
 		try { appWindow = new Window(this); }
 		catch (std::runtime_error)
@@ -62,6 +69,7 @@ namespace core
 		}
 		
 		// log and return success
+		hasStarted = true;
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The DirectX application initialization was successful.");
 		return {};
 	}
@@ -74,15 +82,24 @@ namespace core
 		if (appInstance)
 			appInstance = NULL;
 
+		if (timer)
+			delete timer;
+
 		if(activeLogger)
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The DirectX application was shutdown successfully.");
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////// Main Event Loop //////////////////////////////////////////
+	////////////////////////////// The Game Loop ////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<int> DirectXApp::run()
 	{
+#ifndef NDEBUG
+		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Entering the game loop...");
+#endif
+		// reset (start) the timer
+		timer->reset();
+
 		bool continueRunning = true;
 		MSG msg = { 0 };
 
@@ -99,20 +116,67 @@ namespace core
 					continueRunning = false;
 			}
 
+			// let the timer tick
+			timer->tick();
+
 			if (!isPaused)
 			{
-				// the game is active -> update game logic
+				// acquire input
+
+				// compute fps
+				calculateFrameStatistics();
+
+				// now update the game logic based on the input and the elapsed time since the last frame
+				update(timer->getDeltaTime());
+
+				// generate output
 			}
 		}
+#ifndef NDEBUG
+		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Leaving the game loop...");
+#endif
 		return (int)msg.wParam;
+	}
+
+	void DirectXApp::update(double deltaTime)
+	{
+
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Resizing ////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
 	void DirectXApp::onResize()
-	{ 
+	{
+#ifndef NDEBUG
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("The window was resized. The game graphics must be updated!");
+#endif
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////// Frame Statistics ///////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	void DirectXApp::calculateFrameStatistics()
+	{
+		static int nFrames;				    // number of frames seen
+		static double elapsedTime;		    // time since last call
+		nFrames++;
+
+		// compute average statistics over one second
+		if ((timer->getTotalTime() - elapsedTime) >= 1.0)
+		{
+			// set fps and mspf
+			fps = nFrames;
+			mspf = 1000.0 / (double)fps;
+
+			// show statistics as window caption
+			std::wstring windowCaption = L"bell0bytes engine --- fps: " + std::to_wstring(fps) + L" --- mspf: " + std::to_wstring(mspf);
+			SetWindowText(appWindow->mainWindow, windowCaption.c_str());
+			
+			// reset
+			nFrames = 0;
+			elapsedTime += 1.0;
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////

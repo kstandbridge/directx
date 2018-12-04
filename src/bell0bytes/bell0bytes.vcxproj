@@ -144,6 +144,7 @@
     <ClInclude Include="log.h" />
     <ClInclude Include="serviceLocator.h" />
     <ClInclude Include="stringConverter.h" />
+    <ClInclude Include="timer.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>
@@ -152,6 +153,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="serviceLocator.cpp" />
     <ClCompile Include="stringConverter.cpp" />
+    <ClCompile Include="timer.cpp" />
     <ClCompile Include="window.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
