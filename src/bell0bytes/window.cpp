@@ -226,6 +226,10 @@ namespace core
 			((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
 			((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
 			return 0;
+
+		case WM_KEYDOWN:
+			dxApp->onKeyDown(wParam, lParam);
+			return 0;
 		}
 
 		// let Windows handle other messages

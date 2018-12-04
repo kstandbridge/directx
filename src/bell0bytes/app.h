@@ -55,7 +55,7 @@ namespace core
 		Window* appWindow;						// the application window (i.e. game window)
 
 		// game state
-		bool isPaused;							// true iff the game is paused 
+		bool isPaused;							// true iff the game is paused
 
 		// constructor and destructor
 		DirectXApp(HINSTANCE hInstance);
@@ -64,6 +64,9 @@ namespace core
 		// initialization and shutdown
 		virtual util::Expected<void> init();								// initializes the DirectX application
 		virtual void shutdown(util::Expected<void>* expected = NULL);		// clean up and shutdown the DirectX application
+
+		// acquire user input
+		virtual void onKeyDown(WPARAM wParam, LPARAM lParam);				// handles keyboard input
 
 		// game loop
 		virtual util::Expected<int> run();		// enters the main event loop
