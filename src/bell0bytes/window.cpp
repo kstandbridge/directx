@@ -124,12 +124,19 @@ namespace core
 	{
 		switch (msg)
 		{
-
+		
 		case WM_ACTIVATE:
 			if (LOWORD(wParam) == WA_INACTIVE)	// if the window became inactive, pause the application
-				dxApp->isPaused = true;	
+			{
+				dxApp->isPaused = true;
+				dxApp->timer->stop();
+			}
 			else                                // if the window was activated, unpause the applcation
-				dxApp->isPaused = false;	
+			{
+				if(dxApp->hasStarted)
+					dxApp->timer->start();		// needed to prevent memory leak
+				dxApp->isPaused = false;
+			}
 			return 0;
 
 		case WM_DESTROY:
@@ -139,11 +146,19 @@ namespace core
 			return 0;
 
 		case WM_CLOSE:
+			// pause the game
+			dxApp->isPaused = true;
+			dxApp->timer->stop();
 			// display a message box and ask the user for confirmation
 			if (MessageBox(mainWindow, L"Are you sure you want to quit? Cosmo will miss you!", L"Cosmo is sad!", MB_YESNO | MB_ICONQUESTION) == IDYES)
 				return DefWindowProc(mainWindow, msg, wParam, lParam);
 			else
+			{
+				// unpause the game
+				dxApp->isPaused = false;
+				dxApp->timer->start();
 				return 0;
+			}
 
 		case WM_MENUCHAR:
 			// very important for your mental health: disables the crazy beeping sound when pressing a mnemonic key
@@ -163,8 +178,8 @@ namespace core
 				// when the window is maximized, set the appropriate window flags, resize the graphics and unpause the application
 				isMinimized = false;
 				isMaximized = true;
-				dxApp->isPaused = false;
 				dxApp->onResize();
+				dxApp->isPaused = false;
 			}
 			else if (wParam == SIZE_RESTORED)
 			{
@@ -195,6 +210,7 @@ namespace core
 			// the game window is being dragged around, set the isResizing flag and pause the game
 			isResizing = true;
 			dxApp->isPaused = true;
+			dxApp->timer->stop();
 			return 0;
 
 		case WM_EXITSIZEMOVE:
@@ -202,6 +218,7 @@ namespace core
 			isResizing = false;
 			dxApp->onResize();
 			dxApp->isPaused = false;
+			dxApp->timer->start();
 			return 0;
 
 		case WM_GETMINMAXINFO:

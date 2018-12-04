@@ -25,35 +25,41 @@ namespace core
 {
 	class DirectXApp
 	{
-	protected:
-		// application window
-		HINSTANCE appInstance;					// handle to an instance of the application
-		Window* appWindow;						// the application window (i.e. game window)
-
+	private:
 		// folder paths
 		std::wstring pathToMyDocuments;			// path to the My Documents folder
 		std::wstring pathToLogFiles;			// path to the folder containing log files
 		std::wstring pathToConfigurationFiles;	// path to the folder containing the configuration files
+
 		bool validConfigurationFile;			// true iff there was a valid configuration file at startup
-
-		// logger state
-		bool activeLogger;						// true iff the logging service was successfully registered
-
-		// game state
-		bool isPaused;							// true iff the game is paused 
-		bool hasStarted;						// true iff this class has been fully initialized
+		bool activeFileLogger;					// true iff the logging service was successfully registered
+		bool hasStarted;						// true iff the DirectXApp was started completely
 
 		// timer
 		Timer* timer;							// high-precision timer
 		int fps;								// frames per second
 		double mspf;							// milliseconds per frame
+		double dt;								// constant game update rate
+		double maxSkipFrames;					// constant maximum of frames to skip in the update loop (important to not stall the system on slower computers)
+												
+		void calculateFrameStatistics();		// computes frame statistics
+
+		// helper functions
+		bool getPathToMyDocuments();			// stores the path to the My Documents folder in the appropriate member variable
+		void createLoggingService();			// creates the file logger and registers it as a service
+		bool checkConfigurationFile();			// checks for valid configuration file
+
+	protected:
+		// application window
+		HINSTANCE appInstance;					// handle to an instance of the application
+		Window* appWindow;						// the application window (i.e. game window)
+
+		// game state
+		bool isPaused;							// true iff the game is paused 
 
 		// constructor and destructor
 		DirectXApp(HINSTANCE hInstance);
 		~DirectXApp();
-
-		// timer functions
-		void calculateFrameStatistics();
 
 		// initialization and shutdown
 		virtual util::Expected<void> init();								// initializes the DirectX application
@@ -66,10 +72,11 @@ namespace core
 		// resize functions
 		virtual void onResize();				// resize game graphics
 
-		// helper functions
-		bool getPathToMyDocuments();			// stores the path to the My Documents folder in the appropriate member variable
-		void createLoggingService();			// creates the file logger and registers it as a service
-		bool checkConfigurationFile();			// checks for valid configuration file
+		// generating output
+		virtual void render(double farseer);	// renders the game world
+
+		// getters
+		bool fileLoggerIsActive() { return activeFileLogger; }				// returns true iff the file logger is active
 
 	public:
 		friend class Window;

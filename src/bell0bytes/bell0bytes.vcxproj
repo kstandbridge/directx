@@ -149,8 +149,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp" />
+    <ClCompile Include="bell0tutorial.cpp" />
     <ClCompile Include="log.cpp" />
-    <ClCompile Include="main.cpp" />
     <ClCompile Include="serviceLocator.cpp" />
     <ClCompile Include="stringConverter.cpp" />
     <ClCompile Include="timer.cpp" />

@@ -22,7 +22,7 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructors /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeLogger(false), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), hasStarted(false) { }
+	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)240), maxSkipFrames(10), hasStarted(false) { }
 	DirectXApp::~DirectXApp()
 	{
 		shutdown();
@@ -67,7 +67,7 @@ namespace core
 		{
 			return std::runtime_error("DirectXApp was unable to create the main window!");
 		}
-		
+
 		// log and return success
 		hasStarted = true;
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The DirectX application initialization was successful.");
@@ -85,7 +85,7 @@ namespace core
 		if (timer)
 			delete timer;
 
-		if(activeLogger)
+		if(activeFileLogger)
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The DirectX application was shutdown successfully.");
 	}
 
@@ -100,14 +100,16 @@ namespace core
 		// reset (start) the timer
 		timer->reset();
 
-		bool continueRunning = true;
-		MSG msg = { 0 };
+		double accumulatedTime = 0.0;		// stores the time accumulated by the rendered
+		int nLoops = 0;						// the number of completed loops while updating the game
 
 		// enter main event loop
-		while (continueRunning)
+		bool continueRunning = true;
+		MSG msg = { 0 };
+		while(continueRunning)
 		{
 			// peek for messages
-			while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+			while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 			{
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
@@ -121,15 +123,25 @@ namespace core
 
 			if (!isPaused)
 			{
-				// acquire input
-
 				// compute fps
 				calculateFrameStatistics();
 
-				// now update the game logic based on the input and the elapsed time since the last frame
-				update(timer->getDeltaTime());
+				// acquire input
 
-				// generate output
+				// accumulate the elapsed time since the last frame
+				accumulatedTime += timer->getDeltaTime();
+				
+				// now update the game logic with fixed dt as often as possible
+				nLoops = 0;
+				while (accumulatedTime >= dt && nLoops < maxSkipFrames)
+				{
+					update(dt);
+					accumulatedTime -= dt;
+					nLoops++;
+				}
+				
+				// peek into the future and generate the output
+				render(accumulatedTime / dt);
 			}
 		}
 #ifndef NDEBUG
@@ -138,7 +150,18 @@ namespace core
 		return (int)msg.wParam;
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////// Update //////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
 	void DirectXApp::update(double deltaTime)
+	{
+
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////// Rendering ///////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	void DirectXApp::render(double farseer)
 	{
 
 	}
@@ -152,7 +175,7 @@ namespace core
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("The window was resized. The game graphics must be updated!");
 #endif
 	}
-
+	
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////// Frame Statistics ///////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -233,7 +256,7 @@ namespace core
 		std::shared_ptr<util::Logger<util::FileLogPolicy> > engineLogger(new util::Logger<util::FileLogPolicy>(logFile));
 
 		// set logger to active
-		activeLogger = true;
+		activeFileLogger = true;
 
 		// set name of current thread
 		engineLogger->setThreadName("mainThread");

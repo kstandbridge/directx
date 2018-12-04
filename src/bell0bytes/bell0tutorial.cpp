@@ -139,7 +139,7 @@ void DirectXGame::shutdown(util::Expected<void>* expected)
 		catch (std::runtime_error& e)
 		{
 			// create and print error message string (if the logger is available)
-			if (DirectXApp::activeLogger)
+			if (DirectXApp::fileLoggerIsActive())
 			{
 				std::stringstream errorMessage;
 				errorMessage << "The game is shutting down with a critical error: " << e.what();
