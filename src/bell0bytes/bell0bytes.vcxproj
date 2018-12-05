@@ -142,6 +142,7 @@
     <ClInclude Include="app.h" />
     <ClInclude Include="expected.h" />
     <ClInclude Include="log.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="serviceLocator.h" />
     <ClInclude Include="stringConverter.h" />
     <ClInclude Include="timer.h" />
@@ -155,6 +156,12 @@
     <ClCompile Include="stringConverter.cpp" />
     <ClCompile Include="timer.cpp" />
     <ClCompile Include="window.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="bell0bytes.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Resources\Icons\barkingDog.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

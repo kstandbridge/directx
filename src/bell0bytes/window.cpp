@@ -11,6 +11,9 @@
 #include "serviceLocator.h"
 #include "stringConverter.h"
 
+// bell0bytes resources
+#include "resource.h"
+
 // METHODS //////////////////////////////////////////////////////////////////////////////
 
 namespace
@@ -83,8 +86,8 @@ namespace core
 		wc.cbWndExtra = 0;										// no extra bytes needed
 		wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);	// brush to repaint the background with
 		wc.hCursor = LoadCursor(0, IDC_ARROW);					// load the standard arrow cursor
-		wc.hIcon = LoadIcon(0, IDI_APPLICATION);				// load the standard application icon
-		wc.hIconSm = LoadIcon(0, IDI_APPLICATION);				// load the standard small application icon
+		wc.hIcon = (HICON)LoadImage(dxApp->appInstance, MAKEINTRESOURCE(IDI_BARKING_DOG), IMAGE_ICON, LR_DEFAULTSIZE, LR_DEFAULTSIZE, LR_DEFAULTCOLOR | LR_SHARED);				// load the barking dog icon
+		wc.hIconSm = (HICON)LoadImage(dxApp->appInstance, MAKEINTRESOURCE(IDI_BARKING_DOG), IMAGE_ICON, LR_DEFAULTSIZE, LR_DEFAULTSIZE, LR_DEFAULTCOLOR | LR_SHARED);
 		wc.hInstance = dxApp->appInstance;						// handle to the core application instance
 		wc.lpfnWndProc = mainWndProc;							// window procedure function
 		wc.lpszClassName = L"bell0window";						// class name
@@ -200,6 +203,7 @@ namespace core
 				else if (isResizing)
 				{
 					// do nothing until the dragging / resizing has stopped (dragging continously sents WM_SIZE messages, it would be extremely slow (and very pointless) to respond to all them)
+					
 				}
 				else // resize graphics
 					dxApp->onResize();
