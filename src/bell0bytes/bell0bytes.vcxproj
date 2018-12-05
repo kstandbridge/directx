@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="app.h" />
+    <ClInclude Include="d2d.h" />
     <ClInclude Include="d3d.h" />
     <ClInclude Include="expected.h" />
     <ClInclude Include="log.h" />
@@ -152,6 +153,7 @@
   <ItemGroup>
     <ClCompile Include="app.cpp" />
     <ClCompile Include="bell0tutorial.cpp" />
+    <ClCompile Include="d2d.cpp" />
     <ClCompile Include="d3d.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="serviceLocator.cpp" />

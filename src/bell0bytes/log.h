@@ -178,9 +178,11 @@ namespace util
 	void Logger<LogPolicy>::print(std::stringstream stream)
 	{
 		std::stringstream logStream;
-
+#pragma warning (push)
+#pragma warning (disable: 4127)		// disable constant if expr warning
 		// all severity types but the config type allow custom formatting
-		if (!(severity == SeverityType::config))
+		if(!(severity == SeverityType::config))		// todo: eliminate this warning with if constexpr once version 15.3 of Visual Studio with C++-17 support is available
+#pragma warning (pop)
 		{
 			// get time
 			SYSTEMTIME localTime;

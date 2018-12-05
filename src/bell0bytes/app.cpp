@@ -18,6 +18,7 @@
 
 // graphics
 #include "d3d.h"
+#include "d2d.h"
 
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace core
@@ -25,7 +26,7 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructors /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)240), maxSkipFrames(10), hasStarted(false), d3d(NULL) { }
+	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)240), maxSkipFrames(10), hasStarted(false), showFPS(true), d3d(NULL), d2d(NULL) { }
 	DirectXApp::~DirectXApp()
 	{
 		shutdown();
@@ -78,14 +79,24 @@ namespace core
 			return std::runtime_error("DirectXApp was unable to initialize Direct3D!");
 		}
 
+		// initialize Direct2D
+		try { d2d = new graphics::Direct2D(this); }
+		catch (std::runtime_error)
+		{
+			return std::runtime_error("DirectXApp was unable to initialize Direct2D!");
+		}
+
 		// log and return success
 		hasStarted = true;
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The DirectX application initialization was successful.");
 		return {};
 	}
 
-	void DirectXApp::shutdown(util::Expected<void>* expected)
+	void DirectXApp::shutdown(util::Expected<void>* /*expected*/)
 	{
+		if (d2d)
+			delete d2d;
+
 		if (d3d)
 			delete d3d;
 
@@ -94,7 +105,6 @@ namespace core
 
 		if (timer)
 			delete timer;
-
 
 		if(activeFileLogger)
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The DirectX application was shutdown successfully.");
@@ -137,8 +147,12 @@ namespace core
 
 			if (!isPaused)
 			{
+				// expected result
+				util::Expected<int> result(0);
+
 				// compute fps
-				calculateFrameStatistics();
+				if (!calculateFrameStatistics().wasSuccessful())
+					return util::Expected<int>("Critical error: Unable to calculate frame statistics!");
 
 				// acquire input
 
@@ -149,15 +163,17 @@ namespace core
 				nLoops = 0;
 				while (accumulatedTime >= dt && nLoops < maxSkipFrames)
 				{
-					update(dt);
+					result = update(dt);
+					if (!result.isValid())
+						return result;
 					accumulatedTime -= dt;
 					nLoops++;
 				}
 				
 				// peek into the future and generate the output
-				util::Expected<int> renderResult(render(accumulatedTime / dt));
-				if (!renderResult.isValid())
-					return renderResult;
+				result = render(accumulatedTime / dt);
+				if (!result.isValid())
+					return result;
 			}
 		}
 
@@ -170,11 +186,14 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Input ///////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void DirectXApp::onKeyDown(WPARAM wParam, LPARAM lParam) const
+	void DirectXApp::onKeyDown(WPARAM wParam, LPARAM /*lParam*/)
 	{
 		switch (wParam)
 		{
-		
+		case VK_F1:
+			showFPS = !showFPS;
+			break;
+
 		case VK_ESCAPE:
 			PostMessage(appWindow->mainWindow, WM_CLOSE, 0, 0);
 			break;
@@ -202,7 +221,7 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////// Frame Statistics ///////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void DirectXApp::calculateFrameStatistics()
+	util::Expected<void> DirectXApp::calculateFrameStatistics()
 	{
 		static int nFrames;				    // number of frames seen
 		static double elapsedTime;		    // time since last call
@@ -215,14 +234,25 @@ namespace core
 			fps = nFrames;
 			mspf = 1000.0 / (double)fps;
 
-			// show statistics as window caption
-			std::wstring windowCaption = L"bell0bytes engine --- fps: " + std::to_wstring(fps) + L" --- mspf: " + std::to_wstring(mspf);
-			SetWindowText(appWindow->mainWindow, windowCaption.c_str());
-			
+			if (showFPS)
+			{
+				// create FPS information text layout
+				std::wostringstream outFPS;
+				outFPS.precision(6);
+				outFPS << "FPS: " << DirectXApp::fps << std::endl;
+				outFPS << "mSPF: " << DirectXApp::mspf << std::endl;
+
+				if (FAILED(d2d->writeFactory->CreateTextLayout(outFPS.str().c_str(), (UINT32)outFPS.str().size(), d2d->textFormatFPS.Get(), (float)appWindow->clientWidth, (float)appWindow->clientHeight, &d2d->textLayoutFPS)))
+					return std::runtime_error("Critical error: Failed to create the text layout for FPS information!");
+			}
+
 			// reset
 			nFrames = 0;
 			elapsedTime += 1.0;
 		}
+
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////

@@ -6,6 +6,7 @@
 *
 * Desc:		main class to use the Direct3D component of DirectX
 *
+* History:	- 06/08/2017: Direct2D added
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -58,5 +59,6 @@ namespace graphics
 		util::Expected<int> present();							// present the chain, by flipping the buffers
 
 		friend class core::DirectXApp;
+		friend class Direct2D;
 	};
 }

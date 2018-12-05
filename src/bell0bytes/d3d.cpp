@@ -110,6 +110,10 @@ namespace graphics
 
 	util::Expected<void> Direct3D::onResize()
 	{
+		// release and reset all resources
+		if(dxApp->d2d)
+			dxApp->d2d->devCon->SetTarget(nullptr);
+
 		devCon->ClearState();
 		renderTargetView = nullptr;
 		depthStencilView = nullptr;
@@ -150,7 +154,14 @@ namespace graphics
 		vp.MaxDepth = 1.0f;
 		devCon->RSSetViewports(1, &vp);
 
-		// return success
+		// (re)-create the Direct2D target bitmap associated with the swap chain back buffer and set it as the current target
+		if(dxApp->d2d)
+			if(!dxApp->d2d->createBitmapRenderTarget().wasSuccessful())
+				return std::runtime_error("Direct3D was unable to resize the Direct2D bitmap render target!");
+
+		// log and return success
+		if (dxApp->hasStarted)
+			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The Direct3D and Direct2D resources were resized successfully.");
 		return {};
 	}
 

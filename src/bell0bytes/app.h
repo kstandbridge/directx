@@ -22,6 +22,7 @@
 
 // bell0bytes graphics
 #include "d3d.h"
+#include "d2d.h"
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
 namespace core
@@ -34,18 +35,20 @@ namespace core
 		std::wstring pathToLogFiles;			// path to the folder containing log files
 		std::wstring pathToConfigurationFiles;	// path to the folder containing the configuration files
 
+		// game states
 		bool validConfigurationFile;			// true iff there was a valid configuration file at startup
 		bool activeFileLogger;					// true iff the logging service was successfully registered
 		bool hasStarted;						// true iff the DirectXApp was started completely
 
+		// game options
+		bool showFPS;							// true if and only if FPS information should be printed to the screen. Default: true; can be toggled via F1
+
 		// timer
 		Timer* timer;							// high-precision timer
-		int fps;								// frames per second
-		double mspf;							// milliseconds per frame
 		const double dt;						// constant game update rate
 		const double maxSkipFrames;				// constant maximum of frames to skip in the update loop (important to not stall the system on slower computers)
-												
-		void calculateFrameStatistics();		// computes frame statistics
+
+		util::Expected<void> calculateFrameStatistics();		// computes frame statistics
 
 		// helper functions
 		bool getPathToMyDocuments();			// stores the path to the My Documents folder in the appropriate member variable
@@ -60,8 +63,13 @@ namespace core
 		// game state
 		bool isPaused;							// true iff the game is paused
 
+		// stats
+		int fps;								// frames per second
+		double mspf;							// milliseconds per frame
+
 		// DirectX Graphics
-		graphics::Direct3D* d3d;				// pointer to the Direct3D device
+		graphics::Direct3D* d3d;				// pointer to the Direct3D class
+		graphics::Direct2D* d2d;				// pointer to the Direct2D class
 
 		// constructor and destructor
 		DirectXApp(HINSTANCE hInstance);
@@ -72,11 +80,11 @@ namespace core
 		virtual void shutdown(util::Expected<void>* expected = NULL);		// clean up and shutdown the DirectX application
 
 		// acquire user input
-		virtual void onKeyDown(WPARAM wParam, LPARAM lParam) const;			// handles keyboard input
+		virtual void onKeyDown(WPARAM wParam, LPARAM lParam);				// handles keyboard input
 
 		// game loop
-		virtual util::Expected<int> run();		// enters the main event loop
-		virtual void update(double dt) = 0;		// update the game world
+		virtual util::Expected<int> run();						// enters the main event loop
+		virtual util::Expected<int> update(double dt) = 0;		// update the game world
 
 		// resize functions
 		virtual util::Expected<void> onResize();// resize game graphics
@@ -90,5 +98,6 @@ namespace core
 	public:
 		friend class Window;
 		friend class graphics::Direct3D;
+		friend class graphics::Direct2D;
 	};
 }

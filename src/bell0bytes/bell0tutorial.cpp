@@ -50,7 +50,7 @@ public:
 	// override virtual functions
 	util::Expected<void> init() override;								// game initialization
 	void shutdown(util::Expected<void>* expected = NULL) override;		// cleans up and shuts the game down (handles errors)
-	void update(double dt);												// update the game world
+	util::Expected<int> update(double dt);								// update the game world
 	util::Expected<int> render(double farSeer);							// render the scene
 
 	// run the game
@@ -62,7 +62,7 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// WinMain //////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nShowCmd*/)
 {
 	// create and initialize the game
 	DirectXGame game(hInstance);
@@ -75,7 +75,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		util::Expected<int> returnValue = game.run();
 
 		// clean up after the game has ended
-		game.shutdown(&(util::Expected<void>)returnValue);
+		util::Expected<void> convertedReturnValue(returnValue);
+		game.shutdown(&convertedReturnValue);
 
 		// gracefully return
 		if (returnValue.isValid())
@@ -157,20 +158,25 @@ void DirectXGame::shutdown(util::Expected<void>* expected)
 /////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// Update ////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-void DirectXGame::update(double dt)
+util::Expected<int> DirectXGame::update(double /*dt*/)
 {
-
+	// return success
+	return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// Render ////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-util::Expected<int> DirectXGame::render(double farSeer)
+util::Expected<int> DirectXGame::render(double /*farSeer*/)
 {
 	// clear the back buffer and the depth/stencil buffer
 	d3d->clearBuffers();
 
 	// render
+
+	// print FPS information
+	if (!d2d->printFPS().wasSuccessful())
+		return std::runtime_error("Failed to print FPS information!");
 
 	// present the scene
 	if (!d3d->present().wasSuccessful())

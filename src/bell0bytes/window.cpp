@@ -1,7 +1,11 @@
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
 // Lua and Sol
+#pragma warning( push )
+#pragma warning( disable : 4127)	// disable constant if expr warning
+#pragma warning( disable : 4702)	// disable unreachable code warning
 #include <sol.hpp>
+#pragma warning( pop ) 
 #pragma comment(lib, "liblua53.a")
 
 // bell0bytes core
@@ -167,7 +171,6 @@ namespace core
 		case WM_MENUCHAR:
 			// very important for your mental health: disables the crazy beeping sound when pressing a mnemonic key
 			return MAKELRESULT(0, MNC_CLOSE);	// simply tell Windows that we want the menu closed
-			return 0;
 
 		case WM_SIZE:
 			if (wParam == SIZE_MINIMIZED)

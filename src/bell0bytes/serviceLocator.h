@@ -22,7 +22,7 @@ namespace util
 	class ServiceLocator
 	{
 	private:
-		static std::shared_ptr<Logger<FileLogPolicy> > fileLogger;		// the file logger
+		static std::shared_ptr<Logger<FileLogPolicy> > fileLogger;						// the file logger
 		
 	public:
 		// file logging services

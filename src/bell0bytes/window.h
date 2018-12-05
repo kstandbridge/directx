@@ -30,7 +30,7 @@ namespace core
 
 		// resolution
 		int clientWidth;						// desired client resolution
-		int clientHeight;		
+		int clientHeight;
 
 		// window states
 		bool isMinimized;						// true iff the window is minimized
