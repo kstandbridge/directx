@@ -35,9 +35,11 @@ namespace graphics
 		core::DirectXApp* dxApp;								// pointer to the main application class
 
 		// Direct3D
-		Microsoft::WRL::ComPtr<ID3D11Device> dev;				// the actual Direct3D device
-		Microsoft::WRL::ComPtr<ID3D11DeviceContext> devCon;		// its context
-		Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain;		// the swap chain
+		Microsoft::WRL::ComPtr<ID3D11Device> dev;							// the actual Direct3D device
+		Microsoft::WRL::ComPtr<ID3D11DeviceContext> devCon;					// its context
+		Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain;					// the swap chain
+		Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetView;	// the rendering target
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depthStencilView;	// the depth and stencil buffer
 
 		// colour format
 		DXGI_FORMAT desiredColourFormat;						// the desired colour format
@@ -52,7 +54,8 @@ namespace graphics
 		~Direct3D();
 
 		// present the scene
-		util::Expected<int> present();							// present the chain, but flipping the buffers
+		void clearBuffers();									// clear the back and depth/stencil buffers
+		util::Expected<int> present();							// present the chain, by flipping the buffers
 
 		friend class core::DirectXApp;
 	};

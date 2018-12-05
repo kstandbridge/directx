@@ -110,17 +110,61 @@ namespace graphics
 
 	util::Expected<void> Direct3D::onResize()
 	{
+		devCon->ClearState();
+		renderTargetView = nullptr;
+		depthStencilView = nullptr;
+
 		// resize the swap chain
 		if(FAILED(swapChain->ResizeBuffers(0, 0, 0, desiredColourFormat, 0)))
 			return std::runtime_error("Direct3D was unable to resize the swap chain!");
+
+		// (re)-create the render target view
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+		if (FAILED(swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backBuffer.GetAddressOf()))))
+			return std::runtime_error("Direct3D was unable to acquire the back buffer!");
+		if (FAILED(dev->CreateRenderTargetView(backBuffer.Get(), NULL, &renderTargetView)))
+			return std::runtime_error("Direct3D was unable to create the render target view!");
+
+		// create the depth and stencil buffer
+		D3D11_TEXTURE2D_DESC dsd;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> dsBuffer;
+		backBuffer->GetDesc(&dsd);
+		dsd.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		dsd.Usage = D3D11_USAGE_DEFAULT;
+		dsd.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		if (FAILED(dev->CreateTexture2D(&dsd, NULL, dsBuffer.GetAddressOf())))
+			return std::runtime_error("Direct3D was unable to create a 2D-texture!");
+		if (FAILED(dev->CreateDepthStencilView(dsBuffer.Get(), NULL, depthStencilView.GetAddressOf())))
+			return std::runtime_error("Direct3D was unable to create the depth and stencil buffer!");
+
+		// activate the depth and stencil buffer
+		devCon->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), depthStencilView.Get());
+
+		// set the viewport to the entire backbuffer
+		D3D11_VIEWPORT vp;
+		vp.TopLeftX = 0;
+		vp.TopLeftY = 0;
+		vp.Width = (float)dsd.Width;
+		vp.Height = (float)dsd.Height;
+		vp.MinDepth = 0.0f;
+		vp.MaxDepth = 1.0f;
+		devCon->RSSetViewports(1, &vp);
 
 		// return success
 		return {};
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////// Scene Presentation////////////////////////////////////////
+	////////////////////////////// Scene Presentation ///////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
+	void Direct3D::clearBuffers()
+	{
+		// clear the back buffer and depth / stencil buffer
+		float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		devCon->ClearRenderTargetView(renderTargetView.Get(), black);
+		devCon->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	}
+
 	util::Expected<int> Direct3D::present()
 	{
 		HRESULT hr = swapChain->Present(0, DXGI_PRESENT_DO_NOT_WAIT);

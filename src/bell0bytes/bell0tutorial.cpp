@@ -16,6 +16,7 @@
 *			- 14/07/2017 - A First Framework
 *			- 15/07/2017 - First Contact
 *			- 25/07/2017 - The Swap Chain
+*			- 31/07/2017 - Render Targets
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -166,6 +167,11 @@ void DirectXGame::update(double dt)
 /////////////////////////////////////////////////////////////////////////////////////////
 util::Expected<int> DirectXGame::render(double farSeer)
 {
+	// clear the back buffer and the depth/stencil buffer
+	d3d->clearBuffers();
+
+	// render
+
 	// present the scene
 	if (!d3d->present().wasSuccessful())
 		return std::runtime_error("Failed to present the scene!");
