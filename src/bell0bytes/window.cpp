@@ -104,9 +104,9 @@ namespace core
 
 		// get window size
 		RECT rect = { 0, 0, clientWidth, clientHeight };
-		if(!AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, WS_EX_OVERLAPPEDWINDOW))
+		if (!AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, WS_EX_OVERLAPPEDWINDOW))
 			return std::invalid_argument("The client size of the window could not be computed!");
-		
+
 		// create the window
 		mainWindow = CreateWindowEx(WS_EX_OVERLAPPEDWINDOW, wc.lpszClassName, L"bell0window", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, NULL, NULL, dxApp->appInstance, NULL);
 		if (!mainWindow)
@@ -128,7 +128,7 @@ namespace core
 	{
 		switch (msg)
 		{
-		
+
 		case WM_ACTIVATE:
 			if (LOWORD(wParam) == WA_INACTIVE)	// if the window became inactive, pause the application
 			{
@@ -137,7 +137,7 @@ namespace core
 			}
 			else                                // if the window was activated, unpause the applcation
 			{
-				if(dxApp->hasStarted)
+				if (dxApp->hasStarted)
 					dxApp->timer->start();		// needed to prevent memory leak
 				dxApp->isPaused = false;
 			}
@@ -182,7 +182,8 @@ namespace core
 				// when the window is maximized, set the appropriate window flags, resize the graphics and unpause the application
 				isMinimized = false;
 				isMaximized = true;
-				dxApp->onResize();
+				if (dxApp->hasStarted)
+					dxApp->onResize();
 				dxApp->isPaused = false;
 			}
 			else if (wParam == SIZE_RESTORED)
@@ -191,23 +192,26 @@ namespace core
 				{
 					// the window was restored and was previously minimized, thus we set minimized to false, resize the graphics and restart the application
 					isMinimized = false;
-					dxApp->onResize();
+					if (dxApp->hasStarted)
+						dxApp->onResize();
 					dxApp->isPaused = false;
 				}
 				else if (isMaximized)
 				{
 					// the window was resized and was previously maxmized, thus we set maximized to false, resize the graphics and unpause the game
 					isMaximized = false;
-					dxApp->onResize();
+					if (dxApp->hasStarted)
+						dxApp->onResize();
 					dxApp->isPaused = false;
 				}
 				else if (isResizing)
 				{
 					// do nothing until the dragging / resizing has stopped (dragging continously sents WM_SIZE messages, it would be extremely slow (and very pointless) to respond to all them)
-					
+
 				}
 				else // resize graphics
-					dxApp->onResize();
+					if (dxApp->hasStarted)
+						dxApp->onResize();
 			}
 			return 0;
 
@@ -221,7 +225,8 @@ namespace core
 		case WM_EXITSIZEMOVE:
 			// the game window is no longer being dragged around, set the isResizing flag to false, resize the graphics and unpause the game
 			isResizing = false;
-			dxApp->onResize();
+			if (dxApp->hasStarted)
+				dxApp->onResize();
 			dxApp->isPaused = false;
 			dxApp->timer->start();
 			return 0;
@@ -250,7 +255,7 @@ namespace core
 		{
 			// configuration file exists, try to read from it
 			std::wstring pathToPrefFile = dxApp->pathToConfigurationFiles + L"\\bell0prefs.lua";
-			
+
 			try
 			{
 				sol::state lua;

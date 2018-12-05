@@ -72,7 +72,7 @@ namespace core
 		}
 
 		// initialize Direct3D
-		try { d3d = new graphics::Direct3D(); }
+		try { d3d = new graphics::Direct3D(this); }
 		catch (std::runtime_error)
 		{
 			return std::runtime_error("DirectXApp was unable to initialize Direct3D!");
@@ -155,9 +155,12 @@ namespace core
 				}
 				
 				// peek into the future and generate the output
-				render(accumulatedTime / dt);
+				util::Expected<int> renderResult(render(accumulatedTime / dt));
+				if (!renderResult.isValid())
+					return renderResult;
 			}
 		}
+
 #ifndef NDEBUG
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Leaving the game loop...");
 #endif
@@ -182,29 +185,18 @@ namespace core
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////// Update //////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-	void DirectXApp::update(double dt)
-	{
-
-	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////// Rendering ///////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-	void DirectXApp::render(double farseer)
-	{
-
-	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Resizing ////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void DirectXApp::onResize()
+	util::Expected<void> DirectXApp::onResize()
 	{
 #ifndef NDEBUG
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("The window was resized. The game graphics must be updated!");
 #endif
+		if (!d3d->onResize().wasSuccessful())
+			return std::runtime_error("Unable to resize Direct3D resources!");
+
+		// return success
+		return {};
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////////////////

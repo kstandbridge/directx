@@ -80,7 +80,7 @@ namespace util
 
 		// creating expect from exceptions
 		template<typename E>
-		Expected<T>(E const& e) : spam(std::make_exception_ptr(e)) { }
+		Expected<T>(E const& e) : spam(std::make_exception_ptr(e)), gotResult(false) { }
 
 		template<class E>
 		static Expected<T> fromException(const E& exception)
@@ -184,5 +184,7 @@ namespace util
 		bool isValid() const { return !spam; }
 		bool wasSuccessful() const { return !spam; }
 		void get() const { if (!isValid()) std::rethrow_exception(spam); }
+
+		friend class Expected<int>;
 	};
 }

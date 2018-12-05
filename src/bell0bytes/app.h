@@ -76,18 +76,19 @@ namespace core
 
 		// game loop
 		virtual util::Expected<int> run();		// enters the main event loop
-		virtual void update(double dt);			// update the game world
+		virtual void update(double dt) = 0;		// update the game world
 
 		// resize functions
-		virtual void onResize();				// resize game graphics
+		virtual util::Expected<void> onResize();// resize game graphics
 
 		// generating output
-		virtual void render(double farseer);	// renders the game world
+		virtual util::Expected<int> render(double farseer) = 0;				// renders the game world
 
 		// getters
 		bool fileLoggerIsActive() const { return activeFileLogger; }		// returns true iff the file logger is active
 
 	public:
 		friend class Window;
+		friend class graphics::Direct3D;
 	};
 }

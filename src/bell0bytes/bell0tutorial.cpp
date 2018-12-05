@@ -15,6 +15,7 @@
 *			- 13/07/2017 - Of Icons and Cursors
 *			- 14/07/2017 - A First Framework
 *			- 15/07/2017 - First Contact
+*			- 25/07/2017 - The Swap Chain
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -48,6 +49,8 @@ public:
 	// override virtual functions
 	util::Expected<void> init() override;								// game initialization
 	void shutdown(util::Expected<void>* expected = NULL) override;		// cleans up and shuts the game down (handles errors)
+	void update(double dt);												// update the game world
+	util::Expected<int> render(double farSeer);							// render the scene
 
 	// run the game
 	util::Expected<int> run() override;
@@ -74,7 +77,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		game.shutdown(&(util::Expected<void>)returnValue);
 
 		// gracefully return
-		return returnValue.get();
+		if (returnValue.isValid())
+			return returnValue.get();
+		else
+			return -1;
 	}
 	else
 	{
@@ -87,7 +93,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////// Game Functions ///////////////////////////////////////////
+////////////////////////////// Game Initialization //////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 // constructor and destructor
 DirectXGame::DirectXGame(HINSTANCE hInstance) : DirectXApp(hInstance)
@@ -145,4 +151,25 @@ void DirectXGame::shutdown(util::Expected<void>* expected)
 
 	// no error: clean up and shut down normally
 	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The game was shut down successfully.");
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// Update ////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////
+void DirectXGame::update(double dt)
+{
+
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// Render ////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////
+util::Expected<int> DirectXGame::render(double farSeer)
+{
+	// present the scene
+	if (!d3d->present().wasSuccessful())
+		return std::runtime_error("Failed to present the scene!");
+
+	// return success
+	return 0;
 }
