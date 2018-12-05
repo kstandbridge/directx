@@ -2,6 +2,7 @@
 
 // Lua and Sol
 #include <sol.hpp>
+#pragma comment(lib, "liblua53.a")
 
 // bell0bytes core
 #include "window.h"

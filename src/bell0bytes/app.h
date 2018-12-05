@@ -20,6 +20,9 @@
 // bell0bytes util
 #include "expected.h"
 
+// bell0bytes graphics
+#include "d3d.h"
+
 // CLASSES //////////////////////////////////////////////////////////////////////////////
 namespace core
 {
@@ -56,6 +59,9 @@ namespace core
 
 		// game state
 		bool isPaused;							// true iff the game is paused
+
+		// DirectX Graphics
+		graphics::Direct3D* d3d;				// pointer to the Direct3D device
 
 		// constructor and destructor
 		DirectXApp(HINSTANCE hInstance);

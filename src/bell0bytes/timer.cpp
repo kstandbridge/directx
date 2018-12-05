@@ -71,10 +71,6 @@ namespace core
 			pausedTime = 0;
 			isStopped = false;
 
-#ifndef NDEBUG
-			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The timer was reset.");
-#endif
-
 			// return success
 			return {};
 		}
@@ -101,10 +97,6 @@ namespace core
 				pausedTime = 0;
 				isStopped = false;
 
-#ifndef NDEBUG
-				util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The timer was started.");
-#endif
-
 				// return success
 				return {};
 			}
@@ -128,10 +120,6 @@ namespace core
 				// set the time the timer was stopped to "now"
 				pausedTime = now;
 				isStopped = true;
-
-#ifndef NDEBUG
-				util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The timer was stopped.");
-#endif
 
 				// return success
 				return {};

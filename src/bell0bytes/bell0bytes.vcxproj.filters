@@ -39,6 +39,9 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="d3d.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp">
@@ -62,9 +65,12 @@
     <ClCompile Include="bell0tutorial.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="d3d.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="bell0bytes.rc">
+    <ResourceCompile Include="bell0tutorial.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>

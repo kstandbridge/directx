@@ -10,15 +10,17 @@
 *			- 08/07/2017 - Of the Moon and the Sun
 *			- 08/07/2017 - Handling Important Events
 *			- 09/07/2017 - Keeping Track of Time
+*			- 10/07/2017 - The Game Loop
+*			- 13/07/2017 - Keyboard and Mouse
+*			- 13/07/2017 - Of Icons and Cursors
+*			- 14/07/2017 - A First Framework
+*			- 15/07/2017 - First Contact
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
 // windows includes
 #include <windows.h>
-
-// Lua and Sol
-#pragma comment(lib, "liblua53.a")
 
 // exceptions
 #include <exception>

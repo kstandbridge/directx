@@ -16,13 +16,16 @@
 // util
 #include "serviceLocator.h"
 
+// graphics
+#include "d3d.h"
+
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace core
 {
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructors /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)240), maxSkipFrames(10), hasStarted(false) { }
+	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)240), maxSkipFrames(10), hasStarted(false), d3d(NULL) { }
 	DirectXApp::~DirectXApp()
 	{
 		shutdown();
@@ -68,6 +71,13 @@ namespace core
 			return std::runtime_error("DirectXApp was unable to create the main window!");
 		}
 
+		// initialize Direct3D
+		try { d3d = new graphics::Direct3D(); }
+		catch (std::runtime_error)
+		{
+			return std::runtime_error("DirectXApp was unable to initialize Direct3D!");
+		}
+
 		// log and return success
 		hasStarted = true;
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The DirectX application initialization was successful.");
@@ -76,11 +86,15 @@ namespace core
 
 	void DirectXApp::shutdown(util::Expected<void>* expected)
 	{
+		if (d3d)
+			delete d3d;
+
 		if (appWindow)
 			delete appWindow;
 
 		if (timer)
 			delete timer;
+
 
 		if(activeFileLogger)
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The DirectX application was shutdown successfully.");
