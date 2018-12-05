@@ -37,7 +37,6 @@ namespace core
 		bool isMaximized;						// true iff the window is maximized
 		bool isResizing;						// true iff the window is being dragged around by the mouse
 
-
 		util::Expected<void> init();			// initializes the window
 		void readDesiredResolution();			// gets desired screen resolution from config file			
 
@@ -47,7 +46,7 @@ namespace core
 		~Window();
 
 		// getters
-		inline HWND getMainWindowHandle() { return mainWindow; };
+		inline HWND getMainWindowHandle() const { return mainWindow; };
 
 		// the call back function
 		virtual LRESULT CALLBACK msgProc(HWND hWnd, unsigned int msg, WPARAM wParam, LPARAM lParam);

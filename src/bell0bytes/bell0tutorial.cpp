@@ -46,7 +46,6 @@ public:
 	// override virtual functions
 	util::Expected<void> init() override;								// game initialization
 	void shutdown(util::Expected<void>* expected = NULL) override;		// cleans up and shuts the game down (handles errors)
-	void onResize() override;											// resize game graphics
 
 	// run the game
 	util::Expected<int> run() override;
@@ -112,13 +111,6 @@ util::Expected<int> DirectXGame::run()
 {
 	// run the core DirectX application
 	return DirectXApp::run();
-}
-
-// resize graphics
-void DirectXGame::onResize()
-{
-	// call base method
-	return DirectXApp::onResize();
 }
 
 // shutdown

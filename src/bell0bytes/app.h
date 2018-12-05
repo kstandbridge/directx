@@ -39,8 +39,8 @@ namespace core
 		Timer* timer;							// high-precision timer
 		int fps;								// frames per second
 		double mspf;							// milliseconds per frame
-		double dt;								// constant game update rate
-		double maxSkipFrames;					// constant maximum of frames to skip in the update loop (important to not stall the system on slower computers)
+		const double dt;						// constant game update rate
+		const double maxSkipFrames;				// constant maximum of frames to skip in the update loop (important to not stall the system on slower computers)
 												
 		void calculateFrameStatistics();		// computes frame statistics
 
@@ -51,8 +51,8 @@ namespace core
 
 	protected:
 		// application window
-		HINSTANCE appInstance;					// handle to an instance of the application
-		Window* appWindow;						// the application window (i.e. game window)
+		const HINSTANCE appInstance;			// handle to an instance of the application
+		const Window* appWindow;				// the application window (i.e. game window)
 
 		// game state
 		bool isPaused;							// true iff the game is paused
@@ -66,11 +66,11 @@ namespace core
 		virtual void shutdown(util::Expected<void>* expected = NULL);		// clean up and shutdown the DirectX application
 
 		// acquire user input
-		virtual void onKeyDown(WPARAM wParam, LPARAM lParam);				// handles keyboard input
+		virtual void onKeyDown(WPARAM wParam, LPARAM lParam) const;			// handles keyboard input
 
 		// game loop
 		virtual util::Expected<int> run();		// enters the main event loop
-		void update(double deltaTime);			// update the game world
+		virtual void update(double dt);			// update the game world
 
 		// resize functions
 		virtual void onResize();				// resize game graphics
@@ -79,7 +79,7 @@ namespace core
 		virtual void render(double farseer);	// renders the game world
 
 		// getters
-		bool fileLoggerIsActive() { return activeFileLogger; }				// returns true iff the file logger is active
+		bool fileLoggerIsActive() const { return activeFileLogger; }		// returns true iff the file logger is active
 
 	public:
 		friend class Window;
