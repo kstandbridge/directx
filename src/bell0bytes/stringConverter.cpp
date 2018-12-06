@@ -2,6 +2,10 @@
 
 namespace util
 {
+#pragma warning(push)
+
+#pragma warning(disable: 4996)    // the following converters were declared deprecated in C++-17
+
 	std::wstring StringConverter::s2ws(const std::string& str)
 	{
 		using convert_typeX = std::codecvt_utf8<wchar_t>;
@@ -17,4 +21,6 @@ namespace util
 
 		return converterX.to_bytes(wstr);
 	}
+
+#pragma warning(pop)
 }

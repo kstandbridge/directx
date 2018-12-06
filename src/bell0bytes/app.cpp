@@ -26,7 +26,7 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructors /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)240), maxSkipFrames(10), hasStarted(false), showFPS(true), d3d(NULL), d2d(NULL) { }
+	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), prefFile(L"bell0prefs.lua"), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)240), maxSkipFrames(10), hasStarted(false), showFPS(true), d3d(NULL), d2d(NULL) { }
 	DirectXApp::~DirectXApp()
 	{
 		shutdown();
@@ -198,6 +198,16 @@ namespace core
 			PostMessage(appWindow->mainWindow, WM_CLOSE, 0, 0);
 			break;
 
+		case VK_PRIOR:	
+			// page up -> chose higher resolution
+			d3d->changeResolution(true);
+			break;
+
+		case VK_NEXT:
+			// page down -> chose lower resolution
+			d3d->changeResolution(false);
+			break;
+
 		default: break;
 
 		}
@@ -239,6 +249,8 @@ namespace core
 				// create FPS information text layout
 				std::wostringstream outFPS;
 				outFPS.precision(6);
+				outFPS << "Resolution: " << d3d->currentModeDescription.Width << " x " << d3d->currentModeDescription.Height << " @ " << d3d->currentModeDescription.RefreshRate.Numerator / d3d->currentModeDescription.RefreshRate.Denominator << " Hz" << std::endl;
+				outFPS << "Mode #" << d3d->currentModeIndex << " of " << d3d->numberOfSupportedModes << std::endl;
 				outFPS << "FPS: " << DirectXApp::fps << std::endl;
 				outFPS << "mSPF: " << DirectXApp::mspf << std::endl;
 
@@ -338,21 +350,21 @@ namespace core
 			return false;
 #endif
 		// append name of the log file to the path
-		std::wstring pathToPrefFile = pathToConfigurationFiles + L"\\bell0prefs.lua";
+		std::wstring pathToPrefFile = pathToConfigurationFiles + L"\\" + prefFile; // L"\\bell0prefs.lua";
 
 		// the directory exists, check if the log file is accessible
-		std::ifstream prefFile(pathToPrefFile.c_str());
-		if (prefFile.good())
+		std::ifstream prefStream(pathToPrefFile.c_str());
+		if (prefStream.good())
 		{
 			// the file exists and can be read
-			if (prefFile.peek() == std::ifstream::traits_type::eof())
+			if (prefStream.peek() == std::ifstream::traits_type::eof())
 			{
 				// the file is empty, create it
 				try
 				{
 					util::Logger<util::FileLogPolicy> prefFileCreator(pathToPrefFile.c_str());
 					std::stringstream printPref;
-					printPref << "config =\r\n{ \r\n\tresolution = { width = 800, y = height }\r\n}";
+					printPref << "config =\r\n{ \r\n\tfullscreen = false,\r\n\tresolution = { width = 800, height = 600 }\r\n}";
 					prefFileCreator.print<util::config>(printPref.str());
 				}
 				catch (std::runtime_error)
@@ -368,7 +380,7 @@ namespace core
 			{ 
 				util::Logger<util::FileLogPolicy> prefFileCreator(pathToPrefFile.c_str());
 				std::stringstream printPref;
-				printPref << "config =\r\n{ \r\n\tresolution = { width = 800, height = 600 }\r\n}";
+				printPref << "config =\r\n{ \r\n\tfullscreen = false,\r\n\tresolution = { width = 800, height = 600 }\r\n}";
 				prefFileCreator.print<util::config>(printPref.str());
 			}
 			catch (std::runtime_error)

@@ -35,6 +35,9 @@ namespace core
 		std::wstring pathToLogFiles;			// path to the folder containing log files
 		std::wstring pathToConfigurationFiles;	// path to the folder containing the configuration files
 
+		// configuration file names
+		std::wstring prefFile;					// configuration file specifying screen resolution preferences
+
 		// game states
 		bool validConfigurationFile;			// true iff there was a valid configuration file at startup
 		bool activeFileLogger;					// true iff the logging service was successfully registered

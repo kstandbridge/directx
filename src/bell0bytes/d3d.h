@@ -7,6 +7,7 @@
 * Desc:		main class to use the Direct3D component of DirectX
 *
 * History:	- 06/08/2017: Direct2D added
+*			- 13/03/2018: fullscreen support added
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -28,6 +29,7 @@ class DirectXGame;
 namespace core
 {
 	class DirectXApp;
+	class Window;
 }
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
@@ -65,9 +67,23 @@ namespace graphics
 		Microsoft::WRL::ComPtr<ID3D11VertexShader> standardVertexShader;	// the vertex shader
 		Microsoft::WRL::ComPtr<ID3D11PixelShader> standardPixelShader;		// the pixel shader
 	
-		// colour format
+		// screen modes
 		DXGI_FORMAT desiredColourFormat;						// the desired colour format
+		unsigned int numberOfSupportedModes;					// the number of supported screen modes for the desired colour format
+		DXGI_MODE_DESC* supportedModes;							// list of all supported screen modes for the desired colour format
+		DXGI_MODE_DESC  currentModeDescription;					// description of the currently active screen mode
+		unsigned int currentModeIndex;							// the index of the current mode in the list of all supported screen modes
+		bool startInFullscreen;									// true iff the game should start in fullscreen mode
+		BOOL currentlyInFullscreen;								// true iff the game is currently in fullscreen mode
+		bool changeMode;										// true iff the screen resolution should be changed this frame
 
+		// functions to change screen resolutions
+		void changeResolution(bool increase);					// changes the screen resolution, if increase is true, a higher resolution is chosen, else the resolution is lowered; returns true iff the screen resolution should be changed
+
+		// helper functions
+		util::Expected<void> writeCurrentModeDescriptionToConfigurationFile();	// write the current screen resolution to the configuration file
+		util::Expected<void> readConfigurationFile();			// read preferences from configuration file
+		
 		// functions to create resources
 		util::Expected<void> createResources();					// create device resources, such as the swap chain
 		util::Expected<void> onResize();						// resize the resources
@@ -90,5 +106,6 @@ namespace graphics
 		friend class core::DirectXApp;
 		friend class Direct2D;
 		friend class DirectXGame;
+		friend class core::Window;
 	};
 }

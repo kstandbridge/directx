@@ -1,11 +1,13 @@
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
 // Lua and Sol
-#pragma warning( push )
-#pragma warning( disable : 4127)	// disable constant if expr warning
-#pragma warning( disable : 4702)	// disable unreachable code warning
+
+// warning supression no longer needed with C++-17
+//#pragma warning( push )
+//#pragma warning( disable : 4127)	// disable constant if expr warning
+//#pragma warning( disable : 4702)	// disable unreachable code warning
 #include <sol.hpp>
-#pragma warning( pop ) 
+//#pragma warning( pop ) 
 #pragma comment(lib, "liblua53.a")
 
 // bell0bytes core
@@ -107,7 +109,7 @@ namespace core
 		readDesiredResolution();
 
 		// get window size
-		RECT rect = { 0, 0, clientWidth, clientHeight };
+		RECT rect = { 0, 0, (long)clientWidth, (long)clientHeight };
 		if (!AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, WS_EX_OVERLAPPEDWINDOW))
 			return std::invalid_argument("The client size of the window could not be computed!");
 
@@ -243,7 +245,27 @@ namespace core
 		case WM_KEYDOWN:
 			dxApp->onKeyDown(wParam, lParam);
 			return 0;
+
+		case WM_WINDOWPOSCHANGED:
+			// check for fullscreen switch
+			if (dxApp->hasStarted)
+			{
+				BOOL fullscreen;
+				dxApp->d3d->swapChain->GetFullscreenState(&fullscreen, nullptr);
+				if (fullscreen != dxApp->d3d->currentlyInFullscreen)
+				{
+					// fullscreen mode changed, pause the application, resize everything and unpause the application again
+					dxApp->isPaused = true;
+					dxApp->timer->stop();
+					dxApp->onResize();
+					dxApp->timer->start();
+					dxApp->isPaused = false;
+				}
+			}
+			return 0;
 		}
+
+
 
 		// let Windows handle other messages
 		return DefWindowProc(hWnd, msg, wParam, lParam);

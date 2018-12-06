@@ -16,6 +16,11 @@
 // bell0bytes util
 #include "expected.h"
 
+namespace graphics
+{
+	class Direct3D;
+}
+
 namespace core
 {
 	// DEFINITIONS //////////////////////////////////////////////////////////////////////////
@@ -29,8 +34,8 @@ namespace core
 		DirectXApp* dxApp;						// the core application class
 
 		// resolution
-		int clientWidth;						// desired client resolution
-		int clientHeight;
+		unsigned int clientWidth;				// desired client resolution
+		unsigned int clientHeight;
 
 		// window states
 		bool isMinimized;						// true iff the window is minimized
@@ -52,5 +57,6 @@ namespace core
 		virtual LRESULT CALLBACK msgProc(HWND hWnd, unsigned int msg, WPARAM wParam, LPARAM lParam);
 
 		friend class DirectXApp;
+		friend class graphics::Direct3D;
 	};
 }

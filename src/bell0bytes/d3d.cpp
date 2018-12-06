@@ -1,15 +1,28 @@
 #include "d3d.h"
 #include "serviceLocator.h"
 #include "app.h"
+#include "stringConverter.h"
+
+// Lua and Sol
+//#pragma warning( push )
+//#pragma warning( disable : 4127)	// disable constant if expr warning
+//#pragma warning( disable : 4702)	// disable unreachable code warning
+#include <sol.hpp>
+//#pragma warning( pop ) 
+#pragma comment(lib, "liblua53.a")
 
 namespace graphics
 {
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructor //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	Direct3D::Direct3D(core::DirectXApp* dxApp) : dxApp(dxApp), desiredColourFormat(DXGI_FORMAT_B8G8R8A8_UNORM)
+	Direct3D::Direct3D(core::DirectXApp* dxApp) : dxApp(dxApp), desiredColourFormat(DXGI_FORMAT_B8G8R8A8_UNORM), startInFullscreen(false), currentModeIndex(0), currentlyInFullscreen(false), changeMode(false)
 	{
 		HRESULT hr;
+
+		// read configuration file
+		if (!readConfigurationFile().wasSuccessful())
+			throw std::runtime_error("Unable to read configuration file!");
 
 		// define device creation flags,  D3D11_CREATE_DEVICE_BGRA_SUPPORT needed to get Direct2D interoperability with Direct3D resources
 		unsigned int createDeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
@@ -47,6 +60,12 @@ namespace graphics
 
 	Direct3D::~Direct3D()
 	{
+		// switch to windowed mode before exiting the application
+		swapChain->SetFullscreenState(false, nullptr);
+
+		// delete supported modes array
+		delete[] supportedModes;
+
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Direct3D was shut down successfully.");
 	}
 
@@ -62,7 +81,7 @@ namespace graphics
 		scd.BufferDesc.Width = 0;													// width of the back buffer
 		scd.BufferDesc.Height = 0;													// height
 		scd.BufferDesc.RefreshRate.Numerator = 0;									// refresh rate: 0 -> do not care
-		scd.BufferDesc.RefreshRate.Denominator = 1;					
+		scd.BufferDesc.RefreshRate.Denominator = 1;
 		scd.BufferDesc.Format = desiredColourFormat;								// the color palette to use								
 		scd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;		// unspecified scan line ordering
 		scd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;						// unspecified scaling
@@ -72,7 +91,7 @@ namespace graphics
 		scd.BufferCount = 3;														// the number of buffers in the swap chain (including the front buffer)
 		scd.OutputWindow = dxApp->appWindow->getMainWindowHandle();					// set the main window as output target
 		scd.Windowed = true;														// windowed, not fullscreen$
-		scd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;								// flip mode and discared buffer after presentation
+		scd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;								// flip mode and discarded buffer after presentation
 		scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;							// allow mode switching
 
 		// get the DXGI factory
@@ -100,6 +119,66 @@ namespace graphics
 		if (FAILED(hr))
 			return std::runtime_error("The creation of the swap chain failed!");
 
+		// enumerate all available display modes
+
+		// get representation of the output adapter
+		IDXGIOutput *output = nullptr;
+		if (FAILED(swapChain->GetContainingOutput(&output)))
+			return std::runtime_error("Unable to retrieve the output adapter!");
+
+		// get the amount of supported display modes for the desired format
+		if (FAILED(output->GetDisplayModeList(desiredColourFormat, 0, &numberOfSupportedModes, NULL)))
+			return std::runtime_error("Unable to list all supported display modes!");
+
+		// set up array for the supported modes
+		supportedModes = new DXGI_MODE_DESC[numberOfSupportedModes];
+		ZeroMemory(supportedModes, sizeof(DXGI_MODE_DESC) * numberOfSupportedModes);
+
+		// fill the array with the available display modes
+		if (FAILED(output->GetDisplayModeList(desiredColourFormat, 0, &numberOfSupportedModes, supportedModes)))
+			return std::runtime_error("Unable to retrieve all supported display modes!");
+
+		// release the output adapter
+		output->Release();
+
+		// if the current resolution is not supported, switch to the lowest supported resolution
+		bool supportedMode = false;
+		for (unsigned int i = 0; i < numberOfSupportedModes; i++)
+			if ((unsigned int)dxApp->appWindow->clientWidth == supportedModes[i].Width && dxApp->appWindow->clientHeight == supportedModes[i].Height)
+			{
+				supportedMode = true;
+				currentModeDescription = supportedModes[i];
+				currentModeIndex = i;
+				break;
+			}
+
+		if (!supportedMode)
+		{
+			// print a warning 
+			util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("The desired screen resolution is not supported! Resizing...");
+
+			// set the mode to the lowest supported resolution
+			currentModeDescription = supportedModes[0];
+			currentModeIndex = 0;
+			if (FAILED(swapChain->ResizeTarget(&currentModeDescription)))
+				return std::runtime_error("Unable to resize target to a supported display mode!");
+
+			// write the current mode to the configuration file
+			if (!writeCurrentModeDescriptionToConfigurationFile().wasSuccessful())
+				return std::runtime_error("Unable to write to the configuration file!");
+		}
+
+		// set fullscreen mode?
+		if (startInFullscreen)
+		{
+			// switch to fullscreen mode
+			if (FAILED(swapChain->SetFullscreenState(true, nullptr)))
+				return std::runtime_error("Unable to switch to fullscreen mode!");
+			currentlyInFullscreen = true;
+		}
+		else
+			currentlyInFullscreen = false;
+
 		// the remaining steps need to be done each time the window is resized
 		if (!onResize().wasSuccessful())
 			return std::runtime_error("Direct3D was unable to resize its resources!");
@@ -110,16 +189,59 @@ namespace graphics
 
 	util::Expected<void> Direct3D::onResize()
 	{
+		// Microsoft recommends zeroing out the refresh rate of the description before resizing the targets
+		DXGI_MODE_DESC zeroRefreshRate = currentModeDescription;
+		zeroRefreshRate.RefreshRate.Numerator = 0;
+		zeroRefreshRate.RefreshRate.Denominator = 0;
+
+		// check for fullscreen switch
+		BOOL inFullscreen = false;
+		swapChain->GetFullscreenState(&inFullscreen, NULL);
+
+		if (currentlyInFullscreen != inFullscreen)
+		{
+			// fullscreen switch
+			if (inFullscreen)
+			{
+				// switched to fullscreen -> Microsoft recommends resizing the target before going into fullscreen
+				if (FAILED(swapChain->ResizeTarget(&zeroRefreshRate)))
+					return std::runtime_error("Unable to resize target!");
+
+				// set fullscreen state
+				if (FAILED(swapChain->SetFullscreenState(true, nullptr)))
+					return std::runtime_error("Unable to switch to fullscreen mode!");
+			}
+			else
+			{
+				// switched to windowed -> simply set fullscreen mode to false
+				if (FAILED(swapChain->SetFullscreenState(false, nullptr)))
+					return std::runtime_error("Unable to switch to windowed mode mode!");
+
+				// recompute client area and set new window size
+				RECT rect = { 0, 0, (long)dxApp->d3d->currentModeDescription.Width,  (long)dxApp->d3d->currentModeDescription.Height };
+				if (FAILED(AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, WS_EX_OVERLAPPEDWINDOW)))
+					return std::runtime_error("Failed to adjust window rectangle!");
+				SetWindowPos(dxApp->appWindow->mainWindow, HWND_TOP, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE);
+			}
+
+			// change fullscreen mode
+			currentlyInFullscreen = !currentlyInFullscreen;
+		}
+				
+		// resize target to the desired resolution
+		if (FAILED(swapChain->ResizeTarget(&zeroRefreshRate)))
+			return std::runtime_error("Unable to resize target!");
+
 		// release and reset all resources
-		if(dxApp->d2d)
+		if (dxApp->d2d)
 			dxApp->d2d->devCon->SetTarget(nullptr);
 
 		devCon->ClearState();
 		renderTargetView = nullptr;
 		depthStencilView = nullptr;
-
+		
 		// resize the swap chain
-		if(FAILED(swapChain->ResizeBuffers(0, 0, 0, desiredColourFormat, 0)))
+		if(FAILED(swapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH)))
 			return std::runtime_error("Direct3D was unable to resize the swap chain!");
 
 		// (re)-create the render target view
@@ -163,8 +285,10 @@ namespace graphics
 		initPipeline();
 
 		// log and return success
+#ifndef NDEBUG
 		if (dxApp->hasStarted)
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The Direct3D and Direct2D resources were resized successfully.");
+#endif
 		return {};
 	}
 
@@ -211,7 +335,9 @@ namespace graphics
 		delete pixelShaderBuffer.get().buffer;
 
 		// log and return return success
+#ifndef NDEBUG
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The rendering pipeline was successfully initialized.");
+#endif
 		return { };
 	}
 
@@ -271,5 +397,119 @@ namespace graphics
 
 		// return success
 		return 0;
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////// Screen Resolution ////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	void Direct3D::changeResolution(bool increase)
+	{
+		if (increase)
+		{
+			// if increase is true, choose a higher resolution, if possible
+			if (currentModeIndex < numberOfSupportedModes - 1)
+			{
+				currentModeIndex++;
+				changeMode = true;
+			}
+			else
+				changeMode = false;
+		}
+		else
+		{
+			// else choose a smaller resolution, but only if possible
+			if (currentModeIndex > 0)
+			{
+				currentModeIndex--;
+				changeMode = true;
+			}
+			else
+				changeMode = false;
+		}
+
+		if (changeMode)
+		{
+			// change mode
+			currentModeDescription = supportedModes[currentModeIndex];
+
+			// resize everything
+			onResize();
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////// Helper Functions /////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	util::Expected<void> Direct3D::writeCurrentModeDescriptionToConfigurationFile()
+	{
+		// create the string to print
+		std::string resolution = "\tresolution = { width = " + std::to_string(currentModeDescription.Width) + ", height = " + std::to_string(currentModeDescription.Height) + " }";
+		// append name of the log file to the path
+		std::wstring pathToPrefFile = dxApp->pathToConfigurationFiles + L"\\" + dxApp->prefFile;
+
+		// read the file
+		std::vector<std::string> data;
+		std::string input;
+
+		std::ifstream prefFileStreamIn(pathToPrefFile.c_str());
+		if (prefFileStreamIn.good())
+		{
+			while (std::getline(prefFileStreamIn, input))
+				data.push_back(input);
+			prefFileStreamIn.close();
+
+			// modify the stream
+			for (auto& line : data)
+			{
+				if (line.find("resolution") != std::string::npos)
+				{
+					line.replace(0, resolution.size(), resolution);
+					break;
+				}
+			}
+		}
+		else
+			return std::runtime_error("Unable to read the configuration file!");
+
+		// write the modified stream back to the file
+		std::ofstream prefFileStreamOut(pathToPrefFile.c_str());
+		if (prefFileStreamOut.good())
+		{
+			for (auto const& line : data)
+				prefFileStreamOut << line << std::endl;
+		}
+		else
+			return std::runtime_error("Unable to write to the configuration file!");
+
+		return {};
+	}
+
+	util::Expected<void> Direct3D::readConfigurationFile()
+	{
+		if (dxApp->validConfigurationFile)
+		{
+			// configuration file exists, try to read from it
+			std::wstring pathToPrefFile = dxApp->pathToConfigurationFiles + L"\\" + dxApp->prefFile;
+
+			try
+			{
+				sol::state lua;
+				lua.script_file(util::StringConverter::ws2s(pathToPrefFile));
+
+				// read fullscreen
+				startInFullscreen = lua["config"]["fullscreen"].get_or(false);
+#ifndef NDEBUG
+				std::stringstream res;
+				res << "The fullscreen mode was read from the LUA configuration file: " << std::noboolalpha << startInFullscreen << ".";
+				util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>(res.str());
+#endif
+			}
+			catch (std::exception)
+			{
+				util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("Unable to read configuration file. Starting in windowed mode!");
+			}
+		}
+
+		return { };
 	}
 }
