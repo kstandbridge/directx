@@ -159,10 +159,90 @@ namespace graphics
 			if(!dxApp->d2d->createBitmapRenderTarget().wasSuccessful())
 				return std::runtime_error("Direct3D was unable to resize the Direct2D bitmap render target!");
 
+		// re-initialize GPU pipeline
+		initPipeline();
+
 		// log and return success
 		if (dxApp->hasStarted)
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The Direct3D and Direct2D resources were resized successfully.");
 		return {};
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////// Pipeline ////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	util::Expected<void> Direct3D::initPipeline()
+	{
+		// load Compiled Shader Object files
+#ifndef NDEBUG
+		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../../x64/Debug/vertexShader.cso");
+		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../../x64/Debug/pixelShader.cso");
+#else
+		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../../x64/Release/vertexShader.cso");
+		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../../x64/Release/pixelShader.cso");
+#endif
+		if (!vertexShaderBuffer.wasSuccessful() || !pixelShaderBuffer.wasSuccessful())
+			return "Critical error: Unable to read Compiled Shader Object files!";
+
+		// create the shaders
+		if (FAILED(dev->CreateVertexShader(vertexShaderBuffer.get().buffer, vertexShaderBuffer.get().size, nullptr, &standardVertexShader)))
+			return "Critical error: Unable to create the vertex shader!";
+		if(FAILED(dev->CreatePixelShader(pixelShaderBuffer.get().buffer, pixelShaderBuffer.get().size, nullptr, &standardPixelShader)))
+			return "Critical error: Unable to create the pixel shader!";
+
+		// set the shader objects as the active shaders
+		devCon->VSSetShader(standardVertexShader.Get(), nullptr, 0);
+		devCon->PSSetShader(standardPixelShader.Get(),  nullptr, 0);
+
+		// specify the input layout
+		D3D11_INPUT_ELEMENT_DESC ied[] = { { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 } };
+
+		// create the input layout
+		Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
+		if (FAILED(dev->CreateInputLayout(ied, ARRAYSIZE(ied), vertexShaderBuffer.get().buffer, vertexShaderBuffer.get().size, &inputLayout)))
+			return "Critical error: Unable to create the input layout!";
+
+		// set active input layout
+		devCon->IASetInputLayout(inputLayout.Get());
+
+		// delete shader buffer pointers
+		delete vertexShaderBuffer.get().buffer;
+		delete pixelShaderBuffer.get().buffer;
+
+		// log and return return success
+		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The rendering pipeline was successfully initialized.");
+		return { };
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////// Shaders ////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	util::Expected<ShaderBuffer> Direct3D::loadShader(std::wstring filename)
+	{
+		// load precompiled shaders from .cso objects
+		ShaderBuffer sb;
+		byte* fileData = nullptr;
+
+		// open the file
+		std::ifstream csoFile(filename, std::ios::in | std::ios::binary | std::ios::ate);
+
+		if (csoFile.is_open())
+		{
+			// get shader size
+			sb.size = (unsigned int)csoFile.tellg();
+
+			// collect shader data
+			fileData = new byte[sb.size];
+			csoFile.seekg(0, std::ios::beg);
+			csoFile.read(reinterpret_cast<char*>(fileData), sb.size);
+			csoFile.close();
+			sb.buffer = fileData;
+		}
+		else
+			return "Critical error: Unable to open the compiled shader object!";
+
+		// return the shader buffer
+		return sb;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -184,6 +264,9 @@ namespace graphics
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::error>("The presentation of the scene failed!");
 			return std::runtime_error("Direct3D failed to present the scene!");
 		}
+
+		// rebind the depth and stencil buffer - necessary since the flip model releases the view targets after a call to present
+		devCon->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), depthStencilView.Get());
 
 		// return success
 		return 0;

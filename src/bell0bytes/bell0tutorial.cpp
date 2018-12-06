@@ -17,6 +17,8 @@
 *			- 15/07/2017 - First Contact
 *			- 25/07/2017 - The Swap Chain
 *			- 31/07/2017 - Render Targets
+*			- 05/08/2017 - Printing Text with DirectWrite
+*			- 27/08/2017 - Of Shaders and Triangles
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -42,6 +44,9 @@
 // the core game class, derived from DirectXApp
 class DirectXGame : core::DirectXApp
 {
+private:
+	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
+
 public:
 	// constructor and destructor
 	DirectXGame(HINSTANCE hInstance);
@@ -52,6 +57,9 @@ public:
 	void shutdown(util::Expected<void>* expected = NULL) override;		// cleans up and shuts the game down (handles errors)
 	util::Expected<int> update(double dt);								// update the game world
 	util::Expected<int> render(double farSeer);							// render the scene
+
+	// create graphics
+	util::Expected<void> initGraphics();								// initializes graphics
 
 	// run the game
 	util::Expected<int> run() override;
@@ -111,8 +119,39 @@ util::Expected<void> DirectXGame::init()
 	if (!applicationInitialization.wasSuccessful())
 		return applicationInitialization;
 
+	// initialize game graphics
+	applicationInitialization = initGraphics();
+	if(!applicationInitialization.wasSuccessful())
+		return applicationInitialization;
+
 	// log and return success
 	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Game initialization was successful.");
+	return {};
+}
+
+// initialize graphics
+util::Expected<void> DirectXGame::initGraphics()
+{
+	// create the triangle
+	graphics::VERTEX triangleVertices[] = { { 0.0f, 0.1f, 0.3f }, { 0.11f, -0.1f, 0.3f }, { -0.11f, -0.1f, 0.3f } };
+
+	// set up buffer description
+	D3D11_BUFFER_DESC bd;
+	bd.ByteWidth = sizeof(graphics::VERTEX) * ARRAYSIZE(triangleVertices);
+	bd.Usage = D3D11_USAGE_DEFAULT;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = 0;
+	bd.MiscFlags = 0;
+	bd.StructureByteStride = 0;
+
+	// define subresource data
+	D3D11_SUBRESOURCE_DATA srd = { triangleVertices, 0,0 };
+
+	// create the vertex buffer
+	if (FAILED(d3d->dev->CreateBuffer(&bd, &srd, &vertexBuffer)))
+		return "Critical Error: Unable to create vertex buffer!";
+
+	// return success
 	return {};
 }
 
@@ -171,12 +210,23 @@ util::Expected<int> DirectXGame::render(double /*farSeer*/)
 {
 	// clear the back buffer and the depth/stencil buffer
 	d3d->clearBuffers();
-
+	
 	// render
 
 	// print FPS information
 	if (!d2d->printFPS().wasSuccessful())
 		return std::runtime_error("Failed to print FPS information!");
+
+	// set the vertex buffer
+	unsigned int stride = sizeof(graphics::VERTEX);
+	unsigned int offset = 0;
+	d3d->devCon->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
+
+	// set primitive topology
+	d3d->devCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	// draw 3 vertices, starting from vertex 0
+	d3d->devCon->Draw(3, 0);
 
 	// present the scene
 	if (!d3d->present().wasSuccessful())

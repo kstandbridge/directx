@@ -261,7 +261,12 @@ namespace core
 	bool DirectXApp::getPathToMyDocuments()
 	{
 		PWSTR docPath = NULL;
+
+#ifndef NDEBUG
 		HRESULT hr = SHGetKnownFolderPath(FOLDERID_Documents, NULL, NULL, &docPath);
+#else
+		SHGetKnownFolderPath(FOLDERID_Documents, NULL, NULL, &docPath);
+#endif
 
 		// debug mode only: make sure the operation succeeded
 #ifndef NDEBUG
