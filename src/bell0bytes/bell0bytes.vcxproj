@@ -143,6 +143,8 @@
     <ClInclude Include="d2d.h" />
     <ClInclude Include="d3d.h" />
     <ClInclude Include="expected.h" />
+    <ClInclude Include="gameObjects.h" />
+    <ClInclude Include="graphicsHelper.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="serviceLocator.h" />

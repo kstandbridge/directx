@@ -45,6 +45,12 @@
     <ClInclude Include="d2d.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="graphicsHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gameObjects.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp">
