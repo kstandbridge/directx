@@ -20,6 +20,7 @@
 *			- 05/08/2017 - Printing Text with DirectWrite
 *			- 27/08/2017 - Of Shaders and Triangles
 *			- 01/09/2017 - Among Colourful Stars
+*			- 29/10/2017 - Going Fullscreen
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -244,7 +245,7 @@ util::Expected<int> DirectXGame::render(double /*farSeer*/)
 	// set primitive topology
 	d3d->devCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-	// draw 3 vertices, starting from vertex 0
+	// draw vertices, starting from vertex 0
 	d3d->devCon->Draw((unsigned int)starField.size(), 0);
 
 	// present the scene

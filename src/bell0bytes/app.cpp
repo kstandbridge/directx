@@ -250,7 +250,7 @@ namespace core
 				std::wostringstream outFPS;
 				outFPS.precision(6);
 				outFPS << "Resolution: " << d3d->currentModeDescription.Width << " x " << d3d->currentModeDescription.Height << " @ " << d3d->currentModeDescription.RefreshRate.Numerator / d3d->currentModeDescription.RefreshRate.Denominator << " Hz" << std::endl;
-				outFPS << "Mode #" << d3d->currentModeIndex << " of " << d3d->numberOfSupportedModes << std::endl;
+				outFPS << "Mode #" << d3d->currentModeIndex+1 << " of " << d3d->numberOfSupportedModes << std::endl;
 				outFPS << "FPS: " << DirectXApp::fps << std::endl;
 				outFPS << "mSPF: " << DirectXApp::mspf << std::endl;
 

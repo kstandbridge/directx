@@ -78,7 +78,7 @@ namespace graphics
 		bool changeMode;										// true iff the screen resolution should be changed this frame
 
 		// functions to change screen resolutions
-		void changeResolution(bool increase);					// changes the screen resolution, if increase is true, a higher resolution is chosen, else the resolution is lowered; returns true iff the screen resolution should be changed
+		void changeResolution(bool increase);					// changes the screen resolution, if increase is true, a higher resolution is chosen, else the resolution is lowered
 
 		// helper functions
 		util::Expected<void> writeCurrentModeDescriptionToConfigurationFile();	// write the current screen resolution to the configuration file
