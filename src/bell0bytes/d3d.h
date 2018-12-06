@@ -38,6 +38,7 @@ namespace graphics
 	struct VERTEX
 	{
 		float x, y, z;						// position
+		float r, g, b;						// colour
 	};
 
 	// shader buffer

@@ -19,6 +19,7 @@
 *			- 31/07/2017 - Render Targets
 *			- 05/08/2017 - Printing Text with DirectWrite
 *			- 27/08/2017 - Of Shaders and Triangles
+*			- 01/09/2017 - Among Colourful Stars
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -37,6 +38,9 @@
 #include "expected.h"							// error handling with "expected"
 #include "serviceLocator.h"						// enables global access to services
 
+// bell0bytes graphics
+#include "graphicsHelper.h"
+
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
@@ -46,6 +50,8 @@ class DirectXGame : core::DirectXApp
 {
 private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
+	std::vector<graphics::VERTEX> starField;
+	D3D11_MAPPED_SUBRESOURCE mappedStarField;
 
 public:
 	// constructor and destructor
@@ -132,20 +138,21 @@ util::Expected<void> DirectXGame::init()
 // initialize graphics
 util::Expected<void> DirectXGame::initGraphics()
 {
-	// create the triangle
-	graphics::VERTEX triangleVertices[] = { { 0.0f, 0.1f, 0.3f }, { 0.11f, -0.1f, 0.3f }, { -0.11f, -0.1f, 0.3f } };
+	// create the starfield
+	for (unsigned int i = 0; i < 50000; i++)
+		starField.push_back({ graphics::randomPosition(), graphics::randomPosition(), graphics::randomPosition(), graphics::randomColour(), graphics::randomColour(), graphics::randomColour() });
 
 	// set up buffer description
 	D3D11_BUFFER_DESC bd;
-	bd.ByteWidth = sizeof(graphics::VERTEX) * ARRAYSIZE(triangleVertices);
-	bd.Usage = D3D11_USAGE_DEFAULT;
+	bd.ByteWidth = sizeof(graphics::VERTEX) * (unsigned int)starField.size();
+	bd.Usage = D3D11_USAGE_DYNAMIC;
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bd.CPUAccessFlags = 0;
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	bd.MiscFlags = 0;
 	bd.StructureByteStride = 0;
 
 	// define subresource data
-	D3D11_SUBRESOURCE_DATA srd = { triangleVertices, 0,0 };
+	D3D11_SUBRESOURCE_DATA srd = { starField.data(), 0,0 };
 
 	// create the vertex buffer
 	if (FAILED(d3d->dev->CreateBuffer(&bd, &srd, &vertexBuffer)))
@@ -198,7 +205,19 @@ void DirectXGame::shutdown(util::Expected<void>* expected)
 ///////////////////////////////// Update ////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 util::Expected<int> DirectXGame::update(double /*dt*/)
-{
+{	
+	// update vertex buffer
+	if (FAILED(d3d->devCon->Map(vertexBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedStarField)))
+		return "Critical error: Unable to map subresource!";
+
+	// randomly change the starfield
+	graphics::VERTEX* v = reinterpret_cast<graphics::VERTEX*>(mappedStarField.pData);
+
+	for (unsigned int i = 0; i < starField.size(); i++)
+		v[i] = { graphics::randomPosition(), graphics::randomPosition(), graphics::randomPosition(), graphics::randomColour(), graphics::randomColour(), graphics::randomColour() };
+
+	d3d->devCon->Unmap(vertexBuffer.Get(), 0);
+
 	// return success
 	return 0;
 }
@@ -223,10 +242,10 @@ util::Expected<int> DirectXGame::render(double /*farSeer*/)
 	d3d->devCon->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
 
 	// set primitive topology
-	d3d->devCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	d3d->devCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 
 	// draw 3 vertices, starting from vertex 0
-	d3d->devCon->Draw(3, 0);
+	d3d->devCon->Draw((unsigned int)starField.size(), 0);
 
 	// present the scene
 	if (!d3d->present().wasSuccessful())
