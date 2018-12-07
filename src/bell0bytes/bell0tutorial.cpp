@@ -226,6 +226,26 @@ util::Expected<int> DirectXGame::render(double /*farSeer*/)
 	////////////////////////////////////////////////////////////////////////////////////////
 	d2d->devCon->BeginDraw();
 
+
+	// D2D1_RECT_F rect = { 300, 100, 500, 500 };
+	// d2d->devCon->FillRectangle(&rect, d2d->yellowBrush.Get());
+	//
+	// // draw the outline of a rectangle
+	// rect = { 500, 100, 700, 500 };
+	// d2d->devCon->DrawRectangle(&rect, d2d->yellowBrush.Get());
+
+	// no parking here!
+	D2D1_POINT_2F centre = { d3d->currentModeDescription.Width / 2.0f, d3d->currentModeDescription.Height / 2.0f };
+	D2D1_ELLIPSE ellipse = { centre, 150, 150 };
+
+	// draw the ellipses
+	d2d->devCon->FillEllipse(ellipse, d2d->blueBrush.Get());
+	d2d->devCon->DrawEllipse(ellipse, d2d->redBrush.Get(), 25);
+
+	// draw the lines
+	d2d->devCon->DrawLine(d2d->computeCoordinatesOnEllipse(&ellipse, 135).get(), d2d->computeCoordinatesOnEllipse(&ellipse, 315).get(), d2d->redBrush.Get(), 25);
+	d2d->devCon->DrawLine(d2d->computeCoordinatesOnEllipse(&ellipse, 225).get(), d2d->computeCoordinatesOnEllipse(&ellipse, 45).get(), d2d->redBrush.Get(), 25);
+
 	// print FPS information
 	d2d->printFPS(d2d->yellowBrush.Get());
 

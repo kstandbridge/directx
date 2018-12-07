@@ -1,6 +1,7 @@
 #include "d2d.h"
 #include "app.h"
 #include "serviceLocator.h"
+#include <corecrt_math_defines.h>
 
 namespace graphics
 {
@@ -31,7 +32,7 @@ namespace graphics
 	util::Expected<void> Direct2D::createDevice()
 	{
 		// create the DirectWrite factory
-		if(FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), &writeFactory)))
+		if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), &writeFactory)))
 			return std::runtime_error("Critical error: Unable to create the DirectWrite factory!");
 
 		// create the Direct2D factory
@@ -41,12 +42,12 @@ namespace graphics
 #else
 		options.debugLevel = D2D1_DEBUG_LEVEL_NONE;
 #endif
-		if(FAILED(D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, __uuidof(ID2D1Factory2), &options, &factory)))
+		if (FAILED(D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, __uuidof(ID2D1Factory2), &options, &factory)))
 			return std::runtime_error("Critical error: Unable to create Direct2D Factory!");
-				
+
 		// get the dxgi device
 		Microsoft::WRL::ComPtr<IDXGIDevice> dxgiDevice;
-		if(FAILED(dxApp->d3d->dev.Get()->QueryInterface(__uuidof(IDXGIDevice), &dxgiDevice)))
+		if (FAILED(dxApp->d3d->dev.Get()->QueryInterface(__uuidof(IDXGIDevice), &dxgiDevice)))
 			return std::runtime_error("Critical error: Unable to get the DXGI device!");
 
 		// create the Direct2D device
@@ -76,10 +77,10 @@ namespace graphics
 		Microsoft::WRL::ComPtr<IDXGISurface> dxgiBuffer;
 		if (FAILED(dxApp->d3d->swapChain->GetBuffer(0, __uuidof(IDXGISurface), &dxgiBuffer)))
 			return std::runtime_error("Critical error: Unable to retrieve the back buffer!");
-		
+
 		// create the bitmap
 		Microsoft::WRL::ComPtr<ID2D1Bitmap1> targetBitmap;
-		if(FAILED(devCon->CreateBitmapFromDxgiSurface(dxgiBuffer.Get(), &bp, &targetBitmap)))
+		if (FAILED(devCon->CreateBitmapFromDxgiSurface(dxgiBuffer.Get(), &bp, &targetBitmap)))
 			return std::runtime_error("Critical error: Unable to create the Direct2D bitmap from the DXGI surface!");
 
 		// set the newly created bitmap as render target
@@ -92,25 +93,39 @@ namespace graphics
 	util::Expected<void> Direct2D::initializeTextFormats()
 	{
 		// create standard brushes
-		if(FAILED(devCon->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Yellow), &yellowBrush)))
+		if (FAILED(devCon->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Yellow), &yellowBrush)))
 			return std::runtime_error("Critical error: Unable to create the yellow brush!");
 		if (FAILED(devCon->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &blackBrush)))
 			return std::runtime_error("Critical error: Unable to create the black brush!");
 		if (FAILED(devCon->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &whiteBrush)))
 			return std::runtime_error("Critical error: Unable to create the white brush!");
-	
+		if (FAILED(devCon->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &redBrush)))
+			return std::runtime_error("Critical error: Unable to create the red brush!");
+		if (FAILED(devCon->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Blue), &blueBrush)))
+			return std::runtime_error("Critical error: Unable to create the blue brush!");
+
 		// set up text formats
 
 		// FPS text
-		if(FAILED(writeFactory.Get()->CreateTextFormat(L"Lucida Console", nullptr, DWRITE_FONT_WEIGHT_LIGHT, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 12.0f, L"en-GB", &textFormatFPS)))
+		if (FAILED(writeFactory.Get()->CreateTextFormat(L"Lucida Console", nullptr, DWRITE_FONT_WEIGHT_LIGHT, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 12.0f, L"en-GB", &textFormatFPS)))
 			return std::runtime_error("Critical error: Unable to create text format for FPS information!");
-		if(FAILED(textFormatFPS->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING)))
+		if (FAILED(textFormatFPS->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING)))
 			return std::runtime_error("Critical error: Unable to set text alignment!");
-		if(FAILED(textFormatFPS->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR)))
+		if (FAILED(textFormatFPS->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR)))
 			return std::runtime_error("Critical error: Unable to set paragraph alignment!");
 
 		// return success
 		return { };
+	}
+
+	util::Expected<D2D1_POINT_2F> Direct2D::computeCoordinatesOnEllipse(D2D1_ELLIPSE* const ellipse, const float angle)
+	{
+		// the x and y-coordinates can be computed by circular functions
+		return D2D1_POINT_2F(
+			{
+				FLOAT(ellipse->point.x + ellipse->radiusX * cos(angle*M_PI / 180)),
+				FLOAT(ellipse->point.y + ellipse->radiusY * sin(angle*M_PI / 180))
+			});
 	}
 
 

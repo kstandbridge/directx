@@ -47,6 +47,7 @@ namespace graphics
 		util::Expected<void> createDevice();					// creates the device and its context
 		util::Expected<void> createBitmapRenderTarget();		// creates the bitmap render target, set to be the same as the backbuffer already in use for Direct3D
 		util::Expected<void> initializeTextFormats();			// initializes the different formats, for now, only a format to print FPS information will be created
+		util::Expected<D2D1_POINT_2F> computeCoordinatesOnEllipse(D2D1_ELLIPSE *const ellipse, const float angle);
 
 	public:
 		// constructors
@@ -54,6 +55,8 @@ namespace graphics
 		~Direct2D();
 
 		// brushes
+		Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> blueBrush;
+		Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> redBrush;
 		Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> yellowBrush;
 		Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> whiteBrush;
 		Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> blackBrush;
