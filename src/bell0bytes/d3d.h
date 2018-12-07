@@ -43,6 +43,14 @@ namespace graphics
 		float r, g, b;						// colour
 	};
 
+	// a struct to use as constant buffer
+	struct ConstantColourPositionBuffer
+	{
+		float x, y, z;						// position
+		float spacing;						// spacing variable
+		float r, g, b;						// colour
+	};
+
 	// shader buffer
 	struct ShaderBuffer
 	{
@@ -66,6 +74,9 @@ namespace graphics
 		// Shader interfaces
 		Microsoft::WRL::ComPtr<ID3D11VertexShader> standardVertexShader;	// the vertex shader
 		Microsoft::WRL::ComPtr<ID3D11PixelShader> standardPixelShader;		// the pixel shader
+
+		// constant buffers
+		Microsoft::WRL::ComPtr<ID3D11Buffer> constantColourPositionBuffer;	// constant buffer to hold colour information
 	
 		// screen modes
 		DXGI_FORMAT desiredColourFormat;						// the desired colour format

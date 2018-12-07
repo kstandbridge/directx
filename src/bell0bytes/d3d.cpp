@@ -330,6 +330,18 @@ namespace graphics
 		// set active input layout
 		devCon->IASetInputLayout(inputLayout.Get());
 
+		// define and set the constant buffers
+		
+		// constant colour buffer
+		D3D11_BUFFER_DESC bd = { 0 };
+		bd.ByteWidth = 32;
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+		if (FAILED(dev->CreateBuffer(&bd, nullptr, &constantColourPositionBuffer)))
+			return "Critical error: Unable to create the constant colour and position buffer!";
+		devCon->VSSetConstantBuffers(0, 1, constantColourPositionBuffer.GetAddressOf());
+
 		// delete shader buffer pointers
 		delete vertexShaderBuffer.get().buffer;
 		delete pixelShaderBuffer.get().buffer;
@@ -377,6 +389,8 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	void Direct3D::clearBuffers()
 	{
+		// clear the Direct2D render target
+
 		// clear the back buffer and depth / stencil buffer
 		float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 		devCon->ClearRenderTargetView(renderTargetView.Get(), black);

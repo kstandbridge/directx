@@ -21,6 +21,9 @@
 *			- 27/08/2017 - Of Shaders and Triangles
 *			- 01/09/2017 - Among Colourful Stars
 *			- 29/10/2017 - Going Fullscreen
+*			- 20/05/2018 - Shader Effects
+*			- 21/05/2018 - Introduction to Drawing with Direct2D
+*			- 21/05/2018 - Fun with Brushes
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -101,7 +104,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
 	{
 		// a critical error occured during initialization, try to clean up and to print information about the error
 		game.shutdown(&gameInitialization);
-
+		
 		// humbly return with an error
 		return -1;
 	}
@@ -126,7 +129,7 @@ util::Expected<void> DirectXGame::init()
 
 	// initialize game graphics
 	applicationInitialization = initGraphics();
-	if (!applicationInitialization.wasSuccessful())
+	if(!applicationInitialization.wasSuccessful())
 		return applicationInitialization;
 
 	// log and return success
@@ -138,10 +141,9 @@ util::Expected<void> DirectXGame::init()
 util::Expected<void> DirectXGame::initGraphics()
 {
 	// create a triangle
-	graphics::VERTEX triangleVertices[] = {
-		{ 0.0f, 0.1f, 0.3f, 1.0f, 1.1f, 0.0f },
-		{ 0.11f, -0.1f, 0.3f, 1.0f, 0.0f, 0.0f },
-		{ -0.11f, -0.1f, 0.3f, 0.0f, 1.0f, 0.0f } };
+	graphics::VERTEX triangleVertices[] = { { 0.0f, 0.1f, 0.3f, 1.0f, 1.0f, 0.0f },
+											{ 0.11f, -0.1f, 0.3f, 1.0f, 0.0f, 0.0f },
+											{ -0.11f, -0.1f, 0.3f, 0.0f, 1.0f, 0.0f } };
 
 	// set up buffer description
 	D3D11_BUFFER_DESC bd;
@@ -153,14 +155,14 @@ util::Expected<void> DirectXGame::initGraphics()
 	bd.StructureByteStride = 0;
 
 	// define subresource data
-	D3D11_SUBRESOURCE_DATA srd = { triangleVertices, 0, 0 };
+	D3D11_SUBRESOURCE_DATA srd = { triangleVertices, 0,0 };
 
 	// create the vertex buffer
-	if(FAILED(d3d->dev->CreateBuffer(&bd, &srd, &vertexBuffer)))
+	if (FAILED(d3d->dev->CreateBuffer(&bd, &srd, &vertexBuffer)))
 		return "Critical Error: Unable to create vertex buffer!";
 
 	// return success
-	return { };
+	return {};
 }
 
 // run the game
@@ -205,9 +207,9 @@ void DirectXGame::shutdown(util::Expected<void>* expected)
 /////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// Update ////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-util::Expected<int> DirectXGame::update(double /*dt*/)
-{
-	// update vertex buffer
+util::Expected<int> DirectXGame::update(double /*deltaTime*/)
+{	
+	// update the game world
 
 	// return success
 	return 0;
@@ -221,41 +223,23 @@ util::Expected<int> DirectXGame::render(double /*farSeer*/)
 	// clear the back buffer and the depth/stencil buffer
 	d3d->clearBuffers();
 	
-	////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////// Direct2D /////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////
-	d2d->devCon->BeginDraw();
-
-
-	// D2D1_RECT_F rect = { 300, 100, 500, 500 };
-	// d2d->devCon->FillRectangle(&rect, d2d->yellowBrush.Get());
-	//
-	// // draw the outline of a rectangle
-	// rect = { 500, 100, 700, 500 };
-	// d2d->devCon->DrawRectangle(&rect, d2d->yellowBrush.Get());
-
-	// no parking here!
-	D2D1_POINT_2F centre = { d3d->currentModeDescription.Width / 2.0f, d3d->currentModeDescription.Height / 2.0f };
-	D2D1_ELLIPSE ellipse = { centre, 150, 150 };
-
-	// draw the ellipses
-	d2d->devCon->FillEllipse(ellipse, d2d->blueBrush.Get());
-	d2d->devCon->DrawEllipse(ellipse, d2d->redBrush.Get(), 25);
-
-	// draw the lines
-	d2d->devCon->DrawLine(d2d->computeCoordinatesOnEllipse(&ellipse, 135).get(), d2d->computeCoordinatesOnEllipse(&ellipse, 315).get(), d2d->redBrush.Get(), 25);
-	d2d->devCon->DrawLine(d2d->computeCoordinatesOnEllipse(&ellipse, 225).get(), d2d->computeCoordinatesOnEllipse(&ellipse, 45).get(), d2d->redBrush.Get(), 25);
-
 	// print FPS information
-	d2d->printFPS(d2d->yellowBrush.Get());
+	if (!d2d->printFPS().wasSuccessful())
+		return std::runtime_error("Failed to print FPS information!");
 
-	if(FAILED(d2d->devCon->EndDraw()))
-		return std::runtime_error("Failed to draw 2D graphics!");
+	// update the constant buffers
 
-	////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////// Direct3D /////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////
-	
+	// set the vertex buffer
+	unsigned int stride = sizeof(graphics::VERTEX);
+	unsigned int offset = 0;
+	d3d->devCon->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
+
+	// set primitive topology
+	d3d->devCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	// draw 3 vertices, starting from vertex 0
+	d3d->devCon->Draw(3, 0);
+
 	// present the scene
 	if (!d3d->present().wasSuccessful())
 		return std::runtime_error("Failed to present the scene!");
