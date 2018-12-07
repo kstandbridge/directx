@@ -26,7 +26,7 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructors /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), prefFile(L"bell0prefs.lua"), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)240), maxSkipFrames(10), hasStarted(false), showFPS(true), d3d(NULL), d2d(NULL) { }
+	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), prefFile(L"bell0prefs.lua"), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)6000), maxSkipFrames(10), hasStarted(false), showFPS(true), d3d(NULL), d2d(NULL) { }
 	DirectXApp::~DirectXApp()
 	{
 		shutdown();
@@ -254,7 +254,7 @@ namespace core
 				outFPS << "FPS: " << DirectXApp::fps << std::endl;
 				outFPS << "mSPF: " << DirectXApp::mspf << std::endl;
 
-				if (FAILED(d2d->writeFactory->CreateTextLayout(outFPS.str().c_str(), (UINT32)outFPS.str().size(), d2d->textFormatFPS.Get(), (float)appWindow->clientWidth, (float)appWindow->clientHeight, &d2d->textLayoutFPS)))
+				if (FAILED(d2d->writeFactory->CreateTextLayout(outFPS.str().c_str(), (UINT32)outFPS.str().size(), d2d->textFormatFPS.Get(), (float)appWindow->clientWidth, (float)appWindow->clientHeight, (IDWriteTextLayout **)d2d->textLayoutFPS.GetAddressOf())))
 					return std::runtime_error("Critical error: Failed to create the text layout for FPS information!");
 			}
 

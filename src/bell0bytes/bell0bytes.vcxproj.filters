@@ -51,6 +51,9 @@
     <ClInclude Include="gameObjects.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="sprites.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp">
@@ -80,6 +83,9 @@
     <ClCompile Include="d2d.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="sprites.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="bell0tutorial.rc">
@@ -90,9 +96,15 @@
     <Image Include="Resources\Icons\barkingDog.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="Art\wolfAnimations.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="pixelShader.hlsl" />
     <FxCompile Include="vertexShader.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="Art\wolfAnimations.xml" />
   </ItemGroup>
 </Project>

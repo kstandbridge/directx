@@ -24,12 +24,18 @@
 *			- 20/05/2018 - Shader Effects
 *			- 21/05/2018 - Introduction to Drawing with Direct2D
 *			- 21/05/2018 - Fun with Brushes
+*			- 22/05/2018 - Direct2D Geometries
+*			- 23/05/2018 - Transformations
+*			- 27/05/2018 - Bitmaps
+*			- 28/05/2018 - Sprites
+*			- 30/05/2018 - Animated Sprites
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
 // windows includes
 #include <windows.h>
+#include <wincodec.h>	// Windows Imaging Component
 
 // exceptions
 #include <exception>
@@ -44,6 +50,11 @@
 
 // bell0bytes graphics
 #include "graphicsHelper.h"
+#include "sprites.h"
+
+#include <d2d1effects.h>
+#pragma comment (lib, "dxguid.lib")
+
 
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
 
@@ -53,8 +64,9 @@
 class DirectXGame : core::DirectXApp
 {
 private:
-	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
-
+	graphics::AnimationData* wolfAnimations;
+	graphics::AnimatedSprite* wolf;
+	
 public:
 	// constructor and destructor
 	DirectXGame(HINSTANCE hInstance);
@@ -65,6 +77,7 @@ public:
 	void shutdown(util::Expected<void>* expected = NULL) override;		// cleans up and shuts the game down (handles errors)
 	util::Expected<int> update(double dt);								// update the game world
 	util::Expected<int> render(double farSeer);							// render the scene
+	util::Expected<void> onResize();									// resize the game graphics
 
 	// create graphics
 	util::Expected<void> initGraphics();								// initializes graphics
@@ -139,31 +152,60 @@ util::Expected<void> DirectXGame::init()
 
 // initialize graphics
 util::Expected<void> DirectXGame::initGraphics()
-{
-	// create a triangle
-	graphics::VERTEX triangleVertices[] = { { 0.0f, 0.1f, 0.3f, 1.0f, 1.0f, 0.0f },
-											{ 0.11f, -0.1f, 0.3f, 1.0f, 0.0f, 0.0f },
-											{ -0.11f, -0.1f, 0.3f, 0.0f, 1.0f, 0.0f } };
+{	
+	std::vector<graphics::AnimationCycleData> wolfAnimationsCycles;
+	graphics::AnimationCycleData cycle;
+	
+	// wolf on attention cycle
+	cycle.name = L"Wolf Running";
+	cycle.startFrame = 0;
+	cycle.numberOfFrames = 5;
+	cycle.width = 25;
+	cycle.height = 64;
+	cycle.paddingWidth = 0;
+	cycle.paddingHeight = 1;
+	cycle.borderPaddingHeight = cycle.borderPaddingWidth = 1;
+	cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+	wolfAnimationsCycles.push_back(cycle);
 
-	// set up buffer description
-	D3D11_BUFFER_DESC bd;
-	bd.ByteWidth = sizeof(graphics::VERTEX) * ARRAYSIZE(triangleVertices);
-	bd.Usage = D3D11_USAGE_DEFAULT;
-	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bd.CPUAccessFlags = 0;
-	bd.MiscFlags = 0;
-	bd.StructureByteStride = 0;
+	// angry wolf animation cycle
+	cycle.name = L"Wolf Attack";
+	cycle.startFrame = 0;
+	cycle.numberOfFrames = 5;
+	cycle.width = 24;
+	cycle.height = 62;
+	cycle.paddingWidth = cycle.paddingHeight = 0;
+	cycle.borderPaddingWidth = 1;
+	cycle.borderPaddingHeight = 0;
+	cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+	wolfAnimationsCycles.push_back(cycle);
 
-	// define subresource data
-	D3D11_SUBRESOURCE_DATA srd = { triangleVertices, 0,0 };
+	// create wolf animations
+	try { wolfAnimations = new graphics::AnimationData(d2d, L"Art/wolfAnimations.png", wolfAnimationsCycles); }
+	catch (std::runtime_error& e){ return e; }
 
-	// create the vertex buffer
-	if (FAILED(d3d->dev->CreateBuffer(&bd, &srd, &vertexBuffer)))
-		return "Critical Error: Unable to create vertex buffer!";
+	// create wolf
+	wolf = new graphics::AnimatedSprite(d2d, wolfAnimations, 0, 24, 400, 300);
+
+	wolfAnimationsCycles.clear();
+	std::vector<graphics::AnimationCycleData>(wolfAnimationsCycles).swap(wolfAnimationsCycles);
 
 	// return success
 	return {};
 }
+
+// resize graphics
+util::Expected<void> DirectXGame::onResize()
+{
+	// resize application data, Direct2D and Direct3d
+	if (!DirectXApp::onResize().wasSuccessful())
+		return std::runtime_error("Critical Error: Failed to resize game resources!");
+
+	// return success
+	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>(std::stringstream("The game resources were resized succesfully!"));
+	return { };
+}
+
 
 // run the game
 util::Expected<int> DirectXGame::run()
@@ -200,6 +242,10 @@ void DirectXGame::shutdown(util::Expected<void>* expected)
 		}
 	}
 
+	delete wolf;
+	delete wolfAnimations;
+
+
 	// no error: clean up and shut down normally
 	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The game was shut down successfully.");
 }
@@ -207,9 +253,10 @@ void DirectXGame::shutdown(util::Expected<void>* expected)
 /////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// Update ////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-util::Expected<int> DirectXGame::update(double /*deltaTime*/)
+util::Expected<int> DirectXGame::update(double deltaTime)
 {	
 	// update the game world
+	wolf->updateAnimation(deltaTime);
 
 	// return success
 	return 0;
@@ -222,24 +269,29 @@ util::Expected<int> DirectXGame::render(double /*farSeer*/)
 {
 	// clear the back buffer and the depth/stencil buffer
 	d3d->clearBuffers();
-	
+
+	////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////// Direct2D /////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////
+	d2d->devCon->BeginDraw();
+
+	d2d->matrixScaling = D2D1::Matrix3x2F::Scale(3, 3, D2D1::Point2F(400, 300));
+	d2d->devCon->SetTransform(d2d->matrixScaling);
+
+	wolf->draw();
+
+	d2d->devCon->SetTransform(D2D1::Matrix3x2F::Identity());
+
 	// print FPS information
-	if (!d2d->printFPS().wasSuccessful())
-		return std::runtime_error("Failed to print FPS information!");
+	d2d->printFPS(d2d->blackBrush.Get());
 
-	// update the constant buffers
-
-	// set the vertex buffer
-	unsigned int stride = sizeof(graphics::VERTEX);
-	unsigned int offset = 0;
-	d3d->devCon->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
-
-	// set primitive topology
-	d3d->devCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	// draw 3 vertices, starting from vertex 0
-	d3d->devCon->Draw(3, 0);
-
+	if(FAILED(d2d->devCon->EndDraw()))
+		return std::runtime_error("Failed to draw 2D graphics!");
+	
+	////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////// Direct3D /////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////
+	
 	// present the scene
 	if (!d3d->present().wasSuccessful())
 		return std::runtime_error("Failed to present the scene!");

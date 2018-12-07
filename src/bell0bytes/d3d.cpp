@@ -258,7 +258,7 @@ namespace graphics
 		dsd.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		dsd.Usage = D3D11_USAGE_DEFAULT;
 		dsd.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		if (FAILED(dev->CreateTexture2D(&dsd, NULL, dsBuffer.GetAddressOf())))
+		if (FAILED(dev->CreateTexture2D(&dsd, NULL, dsBuffer.ReleaseAndGetAddressOf())))
 			return std::runtime_error("Direct3D was unable to create a 2D-texture!");
 		if (FAILED(dev->CreateDepthStencilView(dsBuffer.Get(), NULL, depthStencilView.GetAddressOf())))
 			return std::runtime_error("Direct3D was unable to create the depth and stencil buffer!");
@@ -280,6 +280,11 @@ namespace graphics
 		if(dxApp->d2d)
 			if(!dxApp->d2d->createBitmapRenderTarget().wasSuccessful())
 				return std::runtime_error("Direct3D was unable to resize the Direct2D bitmap render target!");
+
+		// re-create Direct2D device dependent resources
+		if (dxApp->d2d)
+			if (!dxApp->d2d->createDeviceDependentResources().wasSuccessful())
+				return std::runtime_error("Direct3D was unable to resize the Direct2D device dependent resources!");
 
 		// re-initialize GPU pipeline
 		initPipeline();
@@ -393,7 +398,8 @@ namespace graphics
 
 		// clear the back buffer and depth / stencil buffer
 		float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		devCon->ClearRenderTargetView(renderTargetView.Get(), black);
+		float white[] = { 1.0f, 1.0f, 1.0f, 1.0f };	
+		devCon->ClearRenderTargetView(renderTargetView.Get(), white);
 		devCon->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	}
 
@@ -447,7 +453,7 @@ namespace graphics
 			currentModeDescription = supportedModes[currentModeIndex];
 
 			// resize everything
-			onResize();
+			dxApp->onResize();
 		}
 	}
 

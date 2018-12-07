@@ -86,11 +86,11 @@ namespace core
 		virtual void onKeyDown(WPARAM wParam, LPARAM lParam);				// handles keyboard input
 
 		// game loop
-		virtual util::Expected<int> run();						// enters the main event loop
-		virtual util::Expected<int> update(double dt) = 0;		// update the game world
+		virtual util::Expected<int> run();									// enters the main event loop
+		virtual util::Expected<int> update(double dt) = 0;					// update the game world
 
 		// resize functions
-		virtual util::Expected<void> onResize();// resize game graphics
+		virtual util::Expected<void> onResize();							// resize game graphics
 
 		// generating output
 		virtual util::Expected<int> render(double farseer) = 0;				// renders the game world

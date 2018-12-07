@@ -148,6 +148,7 @@
     <ClInclude Include="log.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="serviceLocator.h" />
+    <ClInclude Include="sprites.h" />
     <ClInclude Include="stringConverter.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="window.h" />
@@ -159,6 +160,7 @@
     <ClCompile Include="d3d.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="serviceLocator.cpp" />
+    <ClCompile Include="sprites.cpp" />
     <ClCompile Include="stringConverter.cpp" />
     <ClCompile Include="timer.cpp" />
     <ClCompile Include="window.cpp" />
@@ -167,6 +169,7 @@
     <ResourceCompile Include="bell0tutorial.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="Art\wolfAnimations.png" />
     <Image Include="Resources\Icons\barkingDog.ico" />
   </ItemGroup>
   <ItemGroup>
@@ -183,6 +186,9 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="Art\wolfAnimations.xml" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
