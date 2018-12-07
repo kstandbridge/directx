@@ -117,19 +117,12 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Printing Functions //////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<void> Direct2D::printFPS()
+	void Direct2D::printFPS(const Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush)
 	{
 		if (dxApp->showFPS && textLayoutFPS)
 		{
-			devCon->BeginDraw();
-
-			devCon->DrawTextLayout(D2D1::Point2F(2.0f, 5.0f), textLayoutFPS.Get(), yellowBrush.Get());
-			if (FAILED(devCon->EndDraw()))
-				return std::runtime_error("Critical error: Unable to draw FPS information!");
+			devCon->DrawTextLayout(D2D1::Point2F(2.5f, 5.0f), textLayoutFPS.Get(), brush.Get());
 		}
-
-		// return success
-		return {};
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Shut Down ///////////////////////////////////////////

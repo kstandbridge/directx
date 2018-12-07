@@ -221,23 +221,21 @@ util::Expected<int> DirectXGame::render(double /*farSeer*/)
 	// clear the back buffer and the depth/stencil buffer
 	d3d->clearBuffers();
 	
-	// render
+	////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////// Direct2D /////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////
+	d2d->devCon->BeginDraw();
 
 	// print FPS information
-	if (!d2d->printFPS().wasSuccessful())
-		return std::runtime_error("Failed to print FPS information!");
+	d2d->printFPS(d2d->yellowBrush.Get());
 
-	// set the vertex buffer
-	unsigned int stride = sizeof(graphics::VERTEX);
-	unsigned int offset = 0;
-	d3d->devCon->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
+	if(FAILED(d2d->devCon->EndDraw()))
+		return std::runtime_error("Failed to draw 2D graphics!");
 
-	// set primitive topology
-	d3d->devCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	// draw 3 vertices, starting from vertex 0
-	d3d->devCon->Draw(3, 0);
-
+	////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////// Direct3D /////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////
+	
 	// present the scene
 	if (!d3d->present().wasSuccessful())
 		return std::runtime_error("Failed to present the scene!");

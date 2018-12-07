@@ -64,8 +64,9 @@ namespace graphics
 		// text layouts
 		Microsoft::WRL::ComPtr<IDWriteTextLayout> textLayoutFPS;
 
-		util::Expected<void> printFPS();						// prints fps information to the screen
+		void printFPS(const Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush);		// prints fps information to the screen
 
+		friend class DirectXGame;
 		friend class core::DirectXApp;
 		friend class Direct3D;
 	};
