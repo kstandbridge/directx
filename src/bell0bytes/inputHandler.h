@@ -9,6 +9,7 @@
 * History:	- 05/06/2018: added keyboard support
 *			- 11/06/2018: added mouse support
 *			- 12/06/2018: boost serialization to save and load key bindings
+*			- 13/06/2018: the input handler now sends notifications to the game states
 *
 * ToDo:		- memory leak in load function (possible bug in boost serialization? singleton never gets deleted?)
 ****************************************************************************************/
@@ -27,6 +28,7 @@
 
 // bell0bytes utilities
 #include "expected.h"
+#include "observer.h"
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
 namespace boost
@@ -40,6 +42,11 @@ namespace boost
 namespace graphics
 {
 	class AnimatedSprite;
+}
+
+namespace core
+{
+	class DirectXApp;
 }
 
 namespace input
@@ -119,15 +126,13 @@ namespace input
 	};
 
 	// the main input handler class
-	class InputHandler
+	class InputHandler : public util::Subject
 	{
 	private:
+		core::DirectXApp* dxApp;
 		/////////////////////////////////////////////////////////////////////////////////////////
 		////////////////////////////////// GENERAL //////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
-		bool activeKeyboard;										// true iff keyboard input is active
-		bool activeMouse;											// true iff mouse input is active
-
 		const std::wstring& keyBindingsFile;						// file with key bindings
 
 		// polling
@@ -151,7 +156,7 @@ namespace input
 		void loadGameCommands();
 
 		// constructor and destructor
-		InputHandler(const std::wstring& keyBindingsFile);
+		InputHandler(core::DirectXApp* const dxApp, const std::wstring& keyBindingsFile);
 		virtual ~InputHandler();
 
 		// initialization

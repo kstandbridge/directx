@@ -101,7 +101,8 @@ namespace graphics
 		// text formats and layouts
 		util::Expected<void> createTextFormat(LPCWSTR fontFamilyName, const DWRITE_FONT_WEIGHT fontWeight, const DWRITE_FONT_STYLE fontStyle, const DWRITE_FONT_STRETCH fontStretch, const float fontSize, LPCWSTR localeName, const DWRITE_TEXT_ALIGNMENT textAlignment, const DWRITE_PARAGRAPH_ALIGNMENT paragraphAlignment, Microsoft::WRL::ComPtr<IDWriteTextFormat3>& textFormat, IDWriteFontCollection2* const fontCollection = NULL);	// creates a text format with the specifies properties and stores the result in the textFormat parameter
 		util::Expected<void> createTextFormat(LPCWSTR fontFamilyName, const float fontSize, Microsoft::WRL::ComPtr<IDWriteTextFormat3>& textFormat);																																																																							// creates a standard text format
-		util::Expected<void> createTextLayout(const std::wostringstream* const string, IDWriteTextFormat3* const textFormat, const float maxWidth, const float maxHeight, Microsoft::WRL::ComPtr<IDWriteTextLayout4>& textLayout);
+		util::Expected<void> createTextLayoutFromWStringStream(const std::wostringstream* const string, IDWriteTextFormat3* const textFormat, const float maxWidth, const float maxHeight, Microsoft::WRL::ComPtr<IDWriteTextLayout4>& textLayout);
+		util::Expected<void> createTextLayoutFromWString(const std::wstring* const string, IDWriteTextFormat3* const textFormat, const float maxWidth, const float maxHeight, Microsoft::WRL::ComPtr<IDWriteTextLayout4>& textLayout);
 		util::Expected<void> createTextLayoutFPS(const std::wostringstream* const stringFPS, const float width, const float height);
 
 		// draw
@@ -125,8 +126,10 @@ namespace graphics
 		void drawEllipse(const float centreX, const float centreY, const float radiusX, const float radiusY, ID2D1Brush* const brush, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
 
 		// print
-		void printText(const D2D1_POINT_2F& pos, IDWriteTextLayout4* const textLayout, ID2D1SolidColorBrush* const brush = NULL) const;
-		
+		void printText(const D2D1_POINT_2F& pos, IDWriteTextLayout4* const textLayout, const float opacity = 1.0f, ID2D1SolidColorBrush* const brush = NULL) const;
+		void printText(const float x, const float y, IDWriteTextLayout4* const textLayout, const float opacity = 1.0f, ID2D1SolidColorBrush* const brush = NULL) const;
+		void printCenteredText(IDWriteTextLayout4* const textLayout, const float xOffset = 0.0f, const float yOffset = 0.0f, const float opacity = 1.0f, ID2D1SolidColorBrush* const brush = NULL) const;
+
 		// transformations
 		void setTransformation90CW() const;
 		void setTransformation180CW() const;
@@ -137,6 +140,10 @@ namespace graphics
 		void setTransformation(const D2D1::Matrix3x2F& transMatrix) const;
 		void resetTransformation() const;
 		
+		// resolution
+		unsigned int getCurrentWidth() const;
+		unsigned int getCurrentHeight() const;
+
 		// helper functions
 		util::Expected<D2D1_POINT_2F> computeCoordinatesOnEllipse(const D2D1_ELLIPSE *const ellipse, float angle);	// computes the x and y-coordinates of a point on an ellipse
 		

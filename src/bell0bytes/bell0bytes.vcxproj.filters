@@ -60,6 +60,24 @@
     <ClInclude Include="observer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="states.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="playState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mainMenuState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="introState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gameMenuState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gameCommands.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp">
@@ -96,6 +114,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="observer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="states.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="playState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mainMenuState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="introState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gameMenuState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

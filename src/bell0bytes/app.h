@@ -13,9 +13,13 @@
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
+// c++ includes
+#include <deque>
+
 // bell0bytes core
 #include "window.h"
 #include "timer.h"
+#include "states.h"
 
 // bell0bytes util
 #include "expected.h"
@@ -29,6 +33,7 @@
 // CLASSES //////////////////////////////////////////////////////////////////////////////
 namespace input
 {
+	class InputHandler;
 	enum Events { StartApplication, PauseApplication, ResumeApplication, QuitApplication, SwitchFullscreen, WindowChanged, ChangeResolution };
 }
 
@@ -62,7 +67,6 @@ namespace core
 		// configuration file names
 		const std::wstring userPrefFile;		// configuration file editable by the user
 		
-		
 		bool validUserConfigurationFile;		// true iff there was a valid user configuration file at startup
 		bool activeFileLogger;					// true iff the logging service was successfully registered
 
@@ -84,14 +88,14 @@ namespace core
 		// pause and resume game on notification
 		util::Expected<void> onNotify(const int event);
 		
-		// pause
-		void pauseGame();
-		void resumeGame(bool recreateGraphics = false, bool restartTimer = false);
-
 		// check for fullscreen change
 		util::Expected<void> checkFullscreen();
 
 	protected:
+		input::InputHandler* ih;				// pointer to an input handler
+
+		std::deque<GameState*> gameStates;	// the different states of the application
+		
 		const Window* appWindow;				// the application window (i.e. game window)
 		const HINSTANCE appInstance;			// handle to an instance of the application
 
@@ -101,20 +105,16 @@ namespace core
 		graphics::Direct3D* d3d;				// pointer to the Direct3D class
 		graphics::Direct2D* d2d;				// pointer to the Direct2D class
 
-		// options
-		bool showFPS;							// true if and only if FPS information should be printed to the screen. Default: true; can be toggled via F1 (standard binding)
-
 		// game states
 		bool isPaused;							// true iff the game is paused
 					
 		// constructor and destructor
 		DirectXApp(HINSTANCE hInstance, const std::wstring& applicationName, const std::wstring& applicationVersion);
-		~DirectXApp();
-
+		
 		// initialization and shutdown
 		virtual util::Expected<void> init(LPCWSTR windowTitle);				// initializes the DirectX application
 		virtual void shutdown(const util::Expected<void>* const expected = NULL); // clean up and shutdown the DirectX application
-				
+
 		// user input
 		virtual void acquireInput() = 0;
 
@@ -129,11 +129,39 @@ namespace core
 		virtual util::Expected<int> render(const double farseer) = 0;		// renders the game world
 				
 	public:
+		~DirectXApp();
+
+		// options
+		bool showFPS;							// true if and only if FPS information should be printed to the screen. Default: true; can be toggled via F1 (standard binding)
+
+		// input variables
+		bool activeMouse;						// true iff mouse input is active
+		bool activeKeyboard;					// true iff keyboard input is active
+
+		// manage the game states
+		void changeGameState(GameState* const gameState);
+		void pushGameState(GameState* const gameState);
+		void popGameState();
+
+		void addInputHandlerObserver(GameState* gameState);		// adds a game state as an observer to the input handler
+		void removeInputHandlerObserver(GameState* gameState);	// removes a game state from the observer list of the input handler
+
+		bool gameIsRunning;						// true iff the main game state is running (either actively or in the background)
+
+		// pause
+		void pauseGame();
+		void resumeGame(bool recreateGraphics = false, bool restartTimer = false);
+
 		// getters
-		
+		graphics::Direct2D* const getDirect2D() const { return d2d; };
+
 		// application instance and main window
 		const HINSTANCE& getApplicationInstance() const { return appInstance; };
 		const HWND getMainWindow() const { return appWindow->getMainWindowHandle(); };
+
+		// get current resolution
+		const unsigned int getCurrentWidth() const { return d3d->getCurrentWidth(); };
+		const unsigned int getCurrentHeight() const { return d3d->getCurrentHeight(); };
 		
 		// paths and configuration files
 		const std::wstring& getPathToConfigurationFiles() const { return pathToUserConfigurationFiles; };

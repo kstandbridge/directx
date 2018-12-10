@@ -32,6 +32,7 @@
 *			- 04/06/2018 - Input Handler + Keyboard
 *			- 10/06/2018 - Mice
 *			- 12/06/2018 - boost serialization
+*			- 14/06/2018 - game states
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -49,13 +50,13 @@
 // bell0bytes graphics
 #include "sprites.h"
 
-// DEFINITIONS //////////////////////////////////////////////////////////////////////////
+// game states
+#include "introState.h"
 
 // define game commands
-namespace input
-{
-	enum GameCommands { Quit, ShowFPS };
-}
+#include "gameCommands.h"
+
+// DEFINITIONS //////////////////////////////////////////////////////////////////////////
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
 
@@ -63,14 +64,14 @@ namespace input
 class GameInput : public input::InputHandler
 {
 private:
-
+	
 protected:
 	// initialization
 	virtual void setDefaultKeyMap() override;
 
 public:
 	// constructor
-	GameInput(const std::wstring& keyBindingsFile);
+	GameInput(core::DirectXApp* const dxApp, const std::wstring& keyBindingsFile);
 };
 
 // the core game class, derived from DirectXApp
@@ -162,20 +163,23 @@ util::Expected<void> DirectXGame::init(LPCWSTR windowTitle)
 		return applicationInitialization;
 
 	// initialize the input handler
-	try { inputHandler = new GameInput(this->keyBindingsFile); }
+	try { inputHandler = new GameInput(this, this->keyBindingsFile); }
 	catch (...) { return std::runtime_error("Critical error: Unable to create the input handler!"); }
+	ih = inputHandler;
 
-	// initialize game graphics
+	// initialize main game graphics
 	applicationInitialization = initGraphics();
-	if(!applicationInitialization.wasSuccessful())
+	if (!applicationInitialization.wasSuccessful())
 		return applicationInitialization;
 
-	// position mouse at the center of the screen
-	SetCursorPos(d3d->getCurrentWidth() / 2, d3d->getCurrentHeight() / 2);
+	// initialize the first game state
+	//UI::MainMenuState* mainMenu = &UI::MainMenuState::createInstance(this, L"Main Menu");
+	this->pushGameState(&UI::IntroState::createInstance(this, L"Intro"));
 
-	// hide the standard cursor
-	ShowCursor(false);
-		
+	// add the current state as an observer to the input handler
+	//inputHandler->addObserver(gameStates.top());
+	inputHandler->addObserver((*gameStates.rbegin()));
+
 	// log and return success
 	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Game initialization was successful.");
 	return {};
@@ -272,7 +276,7 @@ DirectXGame::~DirectXGame()
 /////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Input Handler ////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-GameInput::GameInput(const std::wstring& keyBindingsFile) : input::InputHandler(keyBindingsFile)
+GameInput::GameInput(core::DirectXApp* const dxApp, const std::wstring& keyBindingsFile) : input::InputHandler(dxApp, keyBindingsFile)
 {
 	// load default key bindings
 	loadGameCommands();
@@ -289,6 +293,7 @@ void GameInput::setDefaultKeyMap()
 
 	keyMap[input::GameCommands::ShowFPS] = new input::GameCommand(L"Show FPS", bi);
 	keyMap[input::GameCommands::Quit] = new input::GameCommand(L"Quit", VK_ESCAPE, input::KeyState::JustPressed);
+	keyMap[input::GameCommands::Start] = new input::GameCommand(L"Start", VK_RETURN, input::KeyState::JustPressed);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -297,29 +302,15 @@ void GameInput::setDefaultKeyMap()
 void DirectXGame::acquireInput()
 {
 	inputHandler->acquireInput();
-
-	// act on user input
-	for (auto x : inputHandler->activeKeyMap)
-	{
-		switch (x.first)
-		{
-		case input::GameCommands::Quit:
-			PostMessage(appWindow->getMainWindowHandle(), WM_CLOSE, 0, 0);
-			break;
-
-		case input::GameCommands::ShowFPS:
-			showFPS = !showFPS;
-			break;
-		}
-	}
 }
 
 util::Expected<int> DirectXGame::update(const double deltaTime)
 {	
+	// let the currently active game scene update itself
+	(*gameStates.rbegin())->update(deltaTime);
+
 	// update the mouse cursor
 	inputHandler->updateMouseCursorAnimation(deltaTime);
-
-	// update the game world
 
 	// return success
 	return 0;
@@ -328,7 +319,7 @@ util::Expected<int> DirectXGame::update(const double deltaTime)
 /////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// Render ////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-util::Expected<int> DirectXGame::render(const double /*farSeer*/)
+util::Expected<int> DirectXGame::render(const double farSeer)
 {
 	// clear the back buffer and the depth/stencil buffer
 	d3d->clearBuffers();
@@ -338,11 +329,13 @@ util::Expected<int> DirectXGame::render(const double /*farSeer*/)
 	////////////////////////////////////////////////////////////////////////////////////////
 	d2d->beginDraw();
 
-	// print FPS information
-	d2d->printFPS();
-
-	// draw cursor
-	inputHandler->drawMouseCursor();
+	// render all active states from bottom to top
+	for (auto gameState : gameStates)
+		gameState->render(farSeer);
+	
+	// draw cursor (if active)
+	if(activeMouse)
+		inputHandler->drawMouseCursor();
 
 	if(!d2d->endDraw().wasSuccessful())
 		return std::runtime_error("Failed to draw 2D graphics!");
@@ -401,6 +394,9 @@ util::Expected<void> DirectXGame::createMouseCursor()
 
 	cursorAnimationsCycles.clear();
 	std::vector<graphics::AnimationCycleData>(cursorAnimationsCycles).swap(cursorAnimationsCycles);
+
+	// hide the standard cursor
+	ShowCursor(false);
 
 	// return success
 	return { };

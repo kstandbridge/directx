@@ -46,6 +46,7 @@ namespace graphics
 		Layers layer;										// the layer the bitmap belongs to
 		unsigned int drawOrder;								// the draw order of the bitmap; relative to the layer
 		float x, y;											// position of the bitmap
+		D2D1_SIZE_F size;									// the width and height of the sprite
 
 	public:
 		// constructors and destructors
@@ -54,10 +55,14 @@ namespace graphics
 		~Sprite();
 
 		// drawing
-		void draw(const D2D1_RECT_F* const destRect, const D2D1_RECT_F* const sourceRect, const float opacity = 1.0f, const D2D1_BITMAP_INTERPOLATION_MODE interPol = D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR) const;		// draws the sprite at the given location, with the given opacity and interpolation mode
-		
+		D2D1_RECT_F getCenteredRectangle(const float scaleFactor) const;	// returns a destination rectangle with the sprite at the center of the screen (scaled by scaleFactor)
+		void draw(const D2D1_RECT_F* const destRect, const D2D1_RECT_F* const sourceRect, const float opacity = 1.0f, const D2D1_BITMAP_INTERPOLATION_MODE interPol = D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR) const;		// draws the sprite at the given location, with the given opacity and interpolation mode	
+		void drawCentered(const float scaleFactor = 1.0f, const float xOffset = 0.0f, const float yOffset = 0.0f, const float opacity = 1.0f, D2D1_BITMAP_INTERPOLATION_MODE interPol = D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, const D2D1_RECT_F* const sourceRect = NULL) const;
+
 		// getters and setters
 		void setPosition(float posX, float posY);			// sets the position of the sprite to the location specified by posX and posY
+		float getWidth() const { return size.width; };
+		float getHeight() const { return size.height; };
 
 		// friends
 		friend class SpriteMap;
@@ -131,7 +136,7 @@ namespace graphics
 		// populate the sprite map
 		void addSprite(Sprite* const sprite);							// adds an existing sprite to its correct map
 		util::Expected<void> addSprite(Direct2D* const d2d, LPCWSTR imageFile, const float x = 0.0f, const float y = 0.0f, const Layers layer = Layers::Characters, unsigned int drawOrder = 0);	// create a new sprite and adds it to sprite map
-		
+
 		// draw the sprites
 		void draw(D2D1_RECT_F* const destRect, D2D1_RECT_F* const sourceRect, const DrawCommands drawCommand = DrawCommands::All, const float opacity = 1.0f, const D2D1_BITMAP_INTERPOLATION_MODE interPol = D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR) const;	// draw sprites based on layers and draw orders
 	};

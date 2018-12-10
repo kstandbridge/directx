@@ -14,11 +14,12 @@ namespace graphics
 	Sprite::Sprite(Direct2D* const d2d, LPCWSTR imageFile, const float x, const float y, const Layers layer, const unsigned int drawOrder) : d2d(d2d), x(x), y(y), layer(layer), drawOrder(drawOrder)
 	{
 		d2d->createBitmapFromWICBitmap(imageFile, bitmap);
+		size = bitmap->GetSize();
 	}
 
 	Sprite::Sprite(Direct2D* const d2d, ID2D1Bitmap1* const bitmap, const float x, const float y, const Layers layer, const unsigned int drawOrder) : d2d(d2d), bitmap(bitmap), x(x), y(y), layer(layer), drawOrder(drawOrder)
 	{
-
+		size = bitmap->GetSize();
 	}
 
 	AnimationData::AnimationData(Direct2D* const d2d, LPCWSTR spriteSheetFile, const std::vector<AnimationCycleData>& cyclesData) : cyclesData(cyclesData)
@@ -122,13 +123,17 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////// Drawing //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
+	D2D1_RECT_F Sprite::getCenteredRectangle(const float scaleFactor) const
+	{
+		float centerWidth = (float)d2d->getCurrentWidth() / 2.0f;
+		float centerHeight = (float)d2d->getCurrentHeight() / 2.0f;
+		return { centerWidth - scaleFactor * (this->size.width / 2.0f), centerHeight - scaleFactor * (this->size.height / 2.0f), centerWidth + scaleFactor * (this->size.width / 2.0f), centerHeight + scaleFactor * (this->size.height / 2.0f) };
+	}
+
 	void Sprite::draw(const D2D1_RECT_F* const destRect, const D2D1_RECT_F* const sourceRect, const float opacity, const D2D1_BITMAP_INTERPOLATION_MODE interPol) const
 	{
 		if (!destRect)
 		{
-			// get size
-			D2D1_SIZE_U size = this->bitmap->GetPixelSize();
-
 			// set suitable destination rectangle
 			D2D1_RECT_F rect = { this->x, this->y, this->x + size.width, this->y + size.height };
 
@@ -136,6 +141,18 @@ namespace graphics
 		}
 		else
 			d2d->devCon->DrawBitmap(bitmap.Get(), destRect, opacity, interPol, sourceRect);
+	}
+
+	void Sprite::drawCentered(const float scaleFactor, const float xOffset, const float yOffset, const float opacity, D2D1_BITMAP_INTERPOLATION_MODE interPol, const D2D1_RECT_F* const sourceRect) const
+	{
+		// set suitable destination rectangle
+		D2D1_RECT_F rect = getCenteredRectangle(scaleFactor);
+		rect.left += xOffset;
+		rect.right += xOffset;
+		rect.top += yOffset;
+		rect.bottom += yOffset;
+
+		d2d->devCon->DrawBitmap(bitmap.Get(), rect, opacity, interPol, sourceRect);
 	}
 
 	void AnimatedSprite::draw() const

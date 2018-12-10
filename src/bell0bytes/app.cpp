@@ -20,13 +20,16 @@
 #include "d3d.h"
 #include "d2d.h"
 
+// user input
+#include "inputHandler.h"
+
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace core
 {
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructors /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	DirectXApp::DirectXApp(HINSTANCE hInstance, const std::wstring& applicationName, const std::wstring& applicationVersion) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), userPrefFile(L"bell0prefs.lua"), validUserConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)6000), maxSkipFrames(10), hasStarted(false), showFPS(true), d3d(NULL), d2d(NULL), manufacturerName(L"bell0bytes"), applicationName(applicationName), applicationVersion(applicationVersion) { }
+	DirectXApp::DirectXApp(HINSTANCE hInstance, const std::wstring& applicationName, const std::wstring& applicationVersion) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), userPrefFile(L"bell0prefs.lua"), validUserConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)6000), maxSkipFrames(10), hasStarted(false), showFPS(true), d3d(NULL), d2d(NULL), manufacturerName(L"bell0bytes"), applicationName(applicationName), applicationVersion(applicationVersion), activeMouse(false), activeKeyboard(false), gameIsRunning(false) { }
 	DirectXApp::~DirectXApp()
 	{
 		shutdown();
@@ -106,6 +109,11 @@ namespace core
 
 	void DirectXApp::shutdown(const util::Expected<void>* /*expected*/)
 	{
+		while (!gameStates.empty())
+		{
+			gameStates.pop_back();
+		}
+
 		if (d2d)
 			delete d2d;
 
@@ -197,6 +205,59 @@ namespace core
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////// Game States //////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	void DirectXApp::changeGameState(GameState* const gameState)
+	{
+		// delete previous states
+		while (!gameStates.empty())
+		{
+			(*gameStates.rbegin())->shutdown();
+			gameStates.pop_back();
+		}
+
+		// push and initialize the new game state (if it is not on the stack already)
+		gameStates.push_back(gameState);
+		(*gameStates.rbegin())->initialize();
+	}
+
+	void DirectXApp::pushGameState(GameState* const gameState)
+	{
+		// pause the current state
+		if (!gameStates.empty())
+			(*gameStates.rbegin())->pause();
+
+		// push and initialize the new game state
+		gameStates.push_back(gameState);
+		(*gameStates.rbegin())->initialize();
+	}
+
+	void DirectXApp::popGameState()
+	{
+		// shut the current state down
+		if (!gameStates.empty()) 
+		{
+			(*gameStates.rbegin())->shutdown();
+			gameStates.pop_back();
+		}
+
+		// resume previous state
+		if (!gameStates.empty()) {
+			(*gameStates.rbegin())->resume();
+		}
+	}
+
+	void DirectXApp::addInputHandlerObserver(GameState* const gameState)
+	{
+		ih->addObserver(gameState);
+	}
+
+	void DirectXApp::removeInputHandlerObserver(GameState* const gameState)
+	{
+		ih->removeObserver(gameState);
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Resizing ////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<void> DirectXApp::onResize() const
@@ -259,7 +320,13 @@ namespace core
 				outFPS << "Mode #" << d3d->getCurrentModeIndex()+1 << " of " << d3d->getNumberOfSupportedModes() << std::endl;
 				outFPS << "FPS: " << DirectXApp::fps << std::endl;
 				outFPS << "mSPF: " << DirectXApp::mspf << std::endl;
-
+				outFPS << std::endl;
+				outFPS << std::endl;
+				outFPS << "States on the Stack: " << gameStates.size() << std::endl;
+				//outFPS << "Active scene: " << gameStates.top()->getStateName() << std::endl;
+				outFPS << "Active scene: " << (*gameStates.rbegin())->getStateName() << std::endl;
+				outFPS << "Active input observers: " << ih->getNumberOfObservers() << std::endl;
+				
 				if (!(d2d->createTextLayoutFPS(&outFPS, (float)d3d->getCurrentWidth(), (float)d3d->getCurrentHeight())).wasSuccessful())
 					return std::runtime_error("Critical error: Failed to create the text layout for FPS information!");
 			}

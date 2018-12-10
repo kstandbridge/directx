@@ -3,6 +3,7 @@
 #include <array>
 #include <assert.h>
 #include "sprites.h"
+#include "app.h"
 
 // boost includes
 #include <boost/archive/text_oarchive.hpp>
@@ -51,17 +52,18 @@ namespace input
 	}
 
 	// Input Handler
-	InputHandler::InputHandler(const std::wstring& keyBindingsFile) : activeKeyboard(true), activeMouse(true), keyBindingsFile(keyBindingsFile)
+	InputHandler::InputHandler(core::DirectXApp* const dxApp, const std::wstring& keyBindingsFile) : keyBindingsFile(keyBindingsFile), dxApp(dxApp)
 	{
 		// initialize keyboard and mouse
 		kbm = new KeyboardAndMouse();
+		dxApp->activeMouse = true;
+		dxApp->activeKeyboard = true;
 
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The input handler was successfully initialized.");
 	};
 
 	InputHandler::~InputHandler()
 	{
-
 		// clear active key map
 		activeKeyMap.clear();
 
@@ -88,8 +90,9 @@ namespace input
 	/////////////////////////////////////////////////////////////////////////////////////////
 	void InputHandler::acquireInput()
 	{
-		// get keyboard and mouse state
-		getKeyboardAndMouseState();
+		if(dxApp->activeKeyboard || dxApp->activeMouse)
+			// get keyboard and mouse state
+			getKeyboardAndMouseState();
 
 		// update the key maps
 		update();
@@ -121,9 +124,12 @@ namespace input
 				activeKeyMap.insert(std::pair<GameCommands, GameCommand&>(x.first, *x.second));
 		}
 
-		// delegate to the UI
-
-		// delegate to the game
+		// if there is an active key map
+		if (!activeKeyMap.empty())
+		{
+			// notify the currently active game states to handle the input
+			notify(activeKeyMap);
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -131,14 +137,17 @@ namespace input
 	/////////////////////////////////////////////////////////////////////////////////////////
 	void InputHandler::getKeyboardAndMouseState()
 	{
-		// store the old keyboard state
-		kbm->previousState = kbm->currentState;
+		if (dxApp->activeKeyboard || dxApp->activeMouse)
+		{
+			// store the old keyboard state
+			kbm->previousState = kbm->currentState;
 
-		// read the current keyboard state
-		for (int i = 0; i < 256; i++)
-			kbm->currentState[i] = isPressed(i);
+			// read the current keyboard state
+			for (int i = 0; i < 256; i++)
+				kbm->currentState[i] = isPressed(i);
+		}
 
-		if (activeMouse)
+		if (dxApp->activeMouse)
 		{
 			// get the position of the mouse cursor
 			POINT cursorPos;
@@ -168,19 +177,23 @@ namespace input
 
 	void InputHandler::drawMouseCursor() const
 	{
-		if(activeMouse)
+		if(dxApp->activeMouse)
 			if(kbm->mouseCursor != nullptr)
 				kbm->mouseCursor->draw();
 	}
 
 	void InputHandler::changeMouseCursorAnimationCycle(const unsigned int cycle)
 	{
-		this->kbm->mouseCursor->changeAnimation(cycle);
+		if(dxApp->activeMouse)
+			if (kbm->mouseCursor != nullptr)
+				this->kbm->mouseCursor->changeAnimation(cycle);
 	}
 
 	void InputHandler::updateMouseCursorAnimation(const double deltaTime)
 	{
-		this->kbm->mouseCursor->updateAnimation(deltaTime);
+		if(dxApp->activeMouse)
+			if (kbm->mouseCursor != nullptr)
+				this->kbm->mouseCursor->updateAnimation(deltaTime);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////

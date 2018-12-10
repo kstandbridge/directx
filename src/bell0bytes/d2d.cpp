@@ -203,13 +203,22 @@ namespace graphics
 		return createTextFormat(fontFamilyName, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, fontSize, L"en-GB", DWRITE_TEXT_ALIGNMENT_LEADING, DWRITE_PARAGRAPH_ALIGNMENT_CENTER, textFormat);
 	}
 
-	util::Expected<void> Direct2D::createTextLayout(const std::wostringstream* const string, IDWriteTextFormat3* const textFormat, const float maxWidth, const float maxHeight, Microsoft::WRL::ComPtr<IDWriteTextLayout4>& textLayout)
+	util::Expected<void> Direct2D::createTextLayoutFromWStringStream(const std::wostringstream* const string, IDWriteTextFormat3* const textFormat, const float maxWidth, const float maxHeight, Microsoft::WRL::ComPtr<IDWriteTextLayout4>& textLayout)
 	{
-		if (FAILED(this->writeFactory->CreateTextLayout(string->str().c_str(), (UINT32)string->str().size(), textFormat, maxWidth, maxHeight, (IDWriteTextLayout **)textLayout.GetAddressOf())))
+		if (FAILED(this->writeFactory->CreateTextLayout(string->str().c_str(), (UINT32)string->str().size(), textFormat, maxWidth, maxHeight, (IDWriteTextLayout **)textLayout.ReleaseAndGetAddressOf())))
 			return std::runtime_error("Critical error: Failed to create the text layout!");
 
 		// return success
 		return { };
+	}
+
+	util::Expected<void> Direct2D::createTextLayoutFromWString(const std::wstring* const string, IDWriteTextFormat3* const textFormat, const float maxWidth, const float maxHeight, Microsoft::WRL::ComPtr<IDWriteTextLayout4>& textLayout)
+	{
+		if (FAILED(this->writeFactory->CreateTextLayout(string->c_str(), (UINT32)string->size(), textFormat, maxWidth, maxHeight, (IDWriteTextLayout **)textLayout.ReleaseAndGetAddressOf())))
+			return std::runtime_error("Critical error: Failed to create the text layout!");
+
+		// return success
+		return {};
 	}
 
 	util::Expected<void> Direct2D::createTextLayoutFPS(const std::wostringstream* const stringFPS, const float width, const float height)
@@ -268,15 +277,6 @@ namespace graphics
 
 		// return success
 		return { };
-	}
-
-	// print text
-	void Direct2D::printText(const D2D1_POINT_2F& pos, IDWriteTextLayout4* const textLayout, ID2D1SolidColorBrush* const brush) const
-	{
-		if (brush)
-			devCon->DrawTextLayout(pos, textLayout, brush);
-		else
-			devCon->DrawTextLayout(pos, textLayout, blackBrush.Get());
 	}
 	
 	// draw and fill rectangles
@@ -471,6 +471,56 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Printing Functions //////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
+	// print text
+	void Direct2D::printText(const D2D1_POINT_2F& pos, IDWriteTextLayout4* const textLayout, const float opacity, ID2D1SolidColorBrush* const brush) const
+	{
+		if (brush)
+		{
+			float oldOpacity = brush->GetOpacity();
+			if (oldOpacity != opacity)
+				brush->SetOpacity(opacity);
+			
+			devCon->DrawTextLayout(pos, textLayout, brush);
+			
+			if (oldOpacity != opacity)
+				brush->SetOpacity(oldOpacity);
+		}
+		else
+		{
+			if (opacity != 1.0f)
+				blackBrush->SetOpacity(opacity);
+
+			devCon->DrawTextLayout(pos, textLayout, blackBrush.Get());
+
+			if (opacity != 1.0f)
+				blackBrush->SetOpacity(1.0f);
+		}
+	}
+
+	void Direct2D::printText(const float x, const float y, IDWriteTextLayout4* const textLayout, const float opacity, ID2D1SolidColorBrush* const brush) const
+	{
+		D2D1_POINT_2F pos = D2D1::Point2F(x, y);
+		printText(pos, textLayout, opacity, brush);
+	}
+
+	void Direct2D::printCenteredText(IDWriteTextLayout4* const textLayout, const float xOffset, const float yOffset, const float opacity, ID2D1SolidColorBrush* const brush) const
+	{
+		D2D1_POINT_2F pos = D2D1::Point2F();
+
+		// compute starting point
+
+		// x-axis
+		float centerWidth = (float)getCurrentWidth() / 2.0f;
+		float minWidth;
+		textLayout->DetermineMinWidth(&minWidth);
+		pos.x = centerWidth - minWidth + xOffset;
+
+		// y-axis
+		pos.y = ((float)getCurrentHeight() / 2.0f) - textLayout->GetMaxHeight() + yOffset;
+
+		printText(pos, textLayout, opacity, brush);
+	}
+	
 	void Direct2D::printFPS(ID2D1SolidColorBrush* const brush) const
 	{
 		if (dxApp->showFramesPerSecond() && textLayoutFPS)
@@ -503,6 +553,19 @@ namespace graphics
 	{
 		// the x and y-coordinates can be computed by circular functions
 		return D2D1_POINT_2F({ ellipse->point.x + ellipse->radiusX * cos(angle*(float)M_PI/180) , ellipse->point.y + ellipse->radiusY * sin(angle*(float)M_PI/180) });
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////// Getters /////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	unsigned int Direct2D::getCurrentWidth() const
+	{
+		return dxApp->getCurrentWidth();
+	}
+
+	unsigned int Direct2D::getCurrentHeight() const
+	{
+		return dxApp->getCurrentHeight();
 	}
 }
 
