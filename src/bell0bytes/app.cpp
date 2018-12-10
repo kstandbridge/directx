@@ -26,7 +26,7 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructors /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	DirectXApp::DirectXApp(HINSTANCE hInstance) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), prefFile(L"bell0prefs.lua"), validConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)6000), maxSkipFrames(10), hasStarted(false), showFPS(true), d3d(NULL), d2d(NULL) { }
+	DirectXApp::DirectXApp(HINSTANCE hInstance, const std::wstring& applicationName, const std::wstring& applicationVersion) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), userPrefFile(L"bell0prefs.lua"), validUserConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)6000), maxSkipFrames(10), hasStarted(false), showFPS(true), d3d(NULL), d2d(NULL), manufacturerName(L"bell0bytes"), applicationName(applicationName), applicationVersion(applicationVersion) { }
 	DirectXApp::~DirectXApp()
 	{
 		shutdown();
@@ -43,6 +43,14 @@ namespace core
 			// show error message on a message box
 			MessageBox(NULL, L"Unable to retrieve the path to the My Documents folder!", L"Critical Error!", MB_ICONEXCLAMATION | MB_OK);
 			return std::runtime_error("Unable to retrieve the path to the My Documents folder!");
+		}
+
+		// get path to application data folder
+		if (!getPathToApplicationDataFolders())
+		{
+			// show error message on a message box
+			MessageBox(NULL, L"Unable to retrieve the path to the application data folders!", L"Critical Error!", MB_ICONEXCLAMATION | MB_OK);
+			return std::runtime_error("Unable to retrieve the path to the aplication data folders!");
 		}
 		
 		// create the logger
@@ -349,7 +357,82 @@ namespace core
 		path.str(std::wstring());
 		path.clear();
 		path << pathToMyDocuments << L"\\bell0bytes\\bell0tutorials\\Settings";
-		pathToConfigurationFiles = path.str();
+		pathToUserConfigurationFiles = path.str();
+
+		// return success
+		return true;
+	}
+
+	bool DirectXApp::getPathToApplicationDataFolders()
+	{
+		HRESULT hr;
+		PWSTR appDataPath = NULL;
+
+		// get and store path to local app data
+#ifndef NDEBUG
+		hr = SHGetKnownFolderPath(FOLDERID_LocalAppData, NULL, NULL, &appDataPath);
+#else
+		SHGetKnownFolderPath(FOLDERID_LocalAppData, NULL, NULL, &appDataPath);
+#endif
+		pathToLocalAppData = appDataPath;
+
+		// get and store path to roaming app data
+		appDataPath = NULL;
+
+#ifndef NDEBUG
+		hr = SHGetKnownFolderPath(FOLDERID_RoamingAppData, NULL, NULL, &appDataPath);
+#else
+		SHGetKnownFolderPath(FOLDERID_RoamingAppData, NULL, NULL, &appDataPath);
+#endif
+		pathToRoamingAppData = appDataPath;
+
+		// get and store path to program data
+		appDataPath = NULL;
+
+#ifndef NDEBUG
+		hr = SHGetKnownFolderPath(FOLDERID_ProgramData, NULL, NULL, &appDataPath);
+#else
+		SHGetKnownFolderPath(FOLDERID_ProgramData, NULL, NULL, &appDataPath);
+#endif
+		pathToProgramData = appDataPath;
+
+		// delete the wstring pointer to avoid memory leak
+		::CoTaskMemFree(static_cast<void*>(appDataPath));
+
+		
+		// create subdirectories
+
+		// append custom folder to local data path
+		std::wstringstream path;
+		path << pathToLocalAppData << "\\" << manufacturerName << "\\" << applicationName << "\\" << applicationVersion << "\\";
+		pathToLocalAppData = path.str();
+
+		// Create the path (including all sub-directories) if it doesn't already exist
+		if (FAILED(SHCreateDirectoryEx(NULL, pathToLocalAppData.c_str(), NULL)))
+			return false;
+
+		// append custom folder to roaming data path
+		path.str(std::wstring());
+		path.clear();
+		path << pathToRoamingAppData << "\\" << manufacturerName << "\\" << applicationName << "\\" << applicationVersion << "\\";
+		pathToRoamingAppData = path.str();
+
+		// Create the path (including all sub-directories) if it doesn't already exist
+		if (FAILED(SHCreateDirectoryEx(NULL, pathToRoamingAppData.c_str(), NULL)))
+			return false;
+
+		// append custom folder to application data path
+		path.str(std::wstring());
+		path.clear();
+		path << pathToProgramData << "\\" << manufacturerName << "\\" << applicationName << "\\" << applicationVersion << "\\";
+		pathToProgramData = path.str();
+
+		// Create the path (including all sub-directories) if it doesn't already exist
+		if (FAILED(SHCreateDirectoryEx(NULL, pathToProgramData.c_str(), NULL)))
+			return false;
+
+		// set file paths
+		keyBindingsFile = pathToLocalAppData + L"keyBindings.dat";
 
 		// return success
 		return true;
@@ -392,13 +475,13 @@ namespace core
 	{
 		// create directory (if it does not exist already)
 		HRESULT hr;
-		hr = SHCreateDirectory(NULL, pathToConfigurationFiles.c_str());
+		hr = SHCreateDirectory(NULL, pathToUserConfigurationFiles.c_str());
 #ifndef NDEBUG
 		if (FAILED(hr))
 			return false;
 #endif
 		// append name of the log file to the path
-		std::wstring pathToPrefFile = pathToConfigurationFiles + L"\\" + prefFile; // L"\\bell0prefs.lua";
+		std::wstring pathToPrefFile = pathToUserConfigurationFiles + L"\\" + userPrefFile; // L"\\bell0prefs.lua";
 
 		// the directory exists, check if the log file is accessible
 		std::ifstream prefStream(pathToPrefFile.c_str());
@@ -437,7 +520,7 @@ namespace core
 			}
 		}
 
-		validConfigurationFile = true;
+		validUserConfigurationFile = true;
 		return true;
 	}
 }

@@ -119,4 +119,7 @@
   <ItemGroup>
     <Xml Include="Art\wolfAnimations.xml" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
 </Project>

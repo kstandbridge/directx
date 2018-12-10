@@ -4,6 +4,11 @@
 #include <assert.h>
 #include "sprites.h"
 
+// boost includes
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/vector.hpp>
+
 namespace input
 {
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +51,7 @@ namespace input
 	}
 
 	// Input Handler
-	InputHandler::InputHandler() : activeKeyboard(true), activeMouse(true)
+	InputHandler::InputHandler(const std::wstring& keyBindingsFile) : activeKeyboard(true), activeMouse(true), keyBindingsFile(keyBindingsFile)
 	{
 		// initialize keyboard and mouse
 		kbm = new KeyboardAndMouse();
@@ -56,15 +61,18 @@ namespace input
 
 	InputHandler::~InputHandler()
 	{
+
+		// clear active key map
+		activeKeyMap.clear();
+
 		// clear key map
 		for (auto x : keyMap)
-			delete x.second;
+		{
+			if(x.second != nullptr)
+				delete x.second;
+		}
 		keyMap.clear();
-		
-		// clear active key map
-		for (auto x : activeKeyMap)
-			delete x.second;
-		activeKeyMap.clear();
+
 
 		delete kbm;
 		
@@ -101,7 +109,7 @@ namespace input
 		{
 			// test chord
 			isActive = true;
-			for(auto y : x.second->chord)
+			for (auto y : x.second->chord)
 			{
 				if (getKeyState(y.keyCode) != y.keyState)
 				{
@@ -109,8 +117,8 @@ namespace input
 					break;
 				}
 			}
-			if(isActive)
-				activeKeyMap.insert(std::pair<GameCommands, GameCommand*>(x.first, x.second));
+			if (isActive)
+				activeKeyMap.insert(std::pair<GameCommands, GameCommand&>(x.first, *x.second));
 		}
 
 		// delegate to the UI
@@ -178,7 +186,54 @@ namespace input
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////// Bindings /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	
+	void InputHandler::saveGameCommands()
+	{
+		std::ofstream keyBindingsOut(this->keyBindingsFile, std::ios::out);
+		boost::archive::text_oarchive oa(keyBindingsOut);
+
+		for (auto gameCommand : keyMap)
+		{
+			oa << gameCommand.first;
+			oa << gameCommand.second;
+		}
+
+		keyBindingsOut.close();
+	}
+
+	void InputHandler::loadGameCommands()
+	{
+		// create default key bindings if file does not yet exist
+		if (GetFileAttributes(keyBindingsFile.c_str()) == INVALID_FILE_ATTRIBUTES)
+		{
+			setDefaultKeyMap();
+			saveGameCommands();
+		}
+
+		// clear map
+		keyMap.clear();
+
+		// load data
+		GameCommands gcs;
+		GameCommand* gameCommand = nullptr;
+
+		// open the file
+		std::ifstream keyBindingsIn(keyBindingsFile);	
+		boost::archive::text_iarchive ia(keyBindingsIn);
+
+		// populate map with information from file
+		while (!keyBindingsIn.eof())
+		{
+			ia >> gcs;
+			ia >> gameCommand;
+			keyMap[gcs] = gameCommand;
+		}
+
+		gameCommand = nullptr;
+
+		// close the file
+		keyBindingsIn.close();
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////// Key Codes ////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////

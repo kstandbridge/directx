@@ -44,15 +44,26 @@ namespace core
 		// timer
 		Timer* timer;							// high-precision timer
 
-		// folder paths
-		std::wstring pathToMyDocuments;			// path to the My Documents folder
-		std::wstring pathToLogFiles;			// path to the folder containing log files
-		std::wstring pathToConfigurationFiles;	// path to the folder containing the configuration files
+		// folder paths (documents)
+		std::wstring pathToMyDocuments;				// path to the My Documents folder
+		std::wstring pathToLogFiles;				// path to the folder containing log files
+		std::wstring pathToUserConfigurationFiles;	// path to the folder containing the configuration files visible to the user
+
+		// folder paths (application)
+		std::wstring pathToLocalAppData;		// data bound to the user, the machine and the application (FOLDERID_LocalAppData)
+		std::wstring pathToRoamingAppData;		// data bound to the user and the application (FOLDERID_RoamingAppData)
+		std::wstring pathToProgramData;			// data bound to the machine and the application (FOLDERID_ProgramData)
+
+		// application data subfolders
+		const std::wstring manufacturerName;	// the manufacturer, i.e. bell0bytes
+		const std::wstring applicationName;		// the game name, i.e. Tetris
+		const std::wstring applicationVersion;	// the version number of the application, i.e. 0.1
 
 		// configuration file names
-		const std::wstring prefFile;			// configuration file specifying screen resolution preferences
+		const std::wstring userPrefFile;		// configuration file editable by the user
 		
-		bool validConfigurationFile;			// true iff there was a valid configuration file at startup
+		
+		bool validUserConfigurationFile;		// true iff there was a valid user configuration file at startup
 		bool activeFileLogger;					// true iff the logging service was successfully registered
 
 		// game states
@@ -66,6 +77,7 @@ namespace core
 
 		// helper functions
 		bool getPathToMyDocuments();			// stores the path to the My Documents folder in the appropriate member variable
+		bool getPathToApplicationDataFolders();	// stores the paths to the application data folders
 		void createLoggingService();			// creates the file logger and registers it as a service
 		bool checkConfigurationFile();			// checks for valid configuration file
 		
@@ -83,6 +95,8 @@ namespace core
 		const Window* appWindow;				// the application window (i.e. game window)
 		const HINSTANCE appInstance;			// handle to an instance of the application
 
+		std::wstring keyBindingsFile;			// game input configuration file
+
 		// DirectX Graphics
 		graphics::Direct3D* d3d;				// pointer to the Direct3D class
 		graphics::Direct2D* d2d;				// pointer to the Direct2D class
@@ -94,7 +108,7 @@ namespace core
 		bool isPaused;							// true iff the game is paused
 					
 		// constructor and destructor
-		DirectXApp(HINSTANCE hInstance);
+		DirectXApp(HINSTANCE hInstance, const std::wstring& applicationName, const std::wstring& applicationVersion);
 		~DirectXApp();
 
 		// initialization and shutdown
@@ -122,9 +136,9 @@ namespace core
 		const HWND getMainWindow() const { return appWindow->getMainWindowHandle(); };
 		
 		// paths and configuration files
-		const std::wstring& getPathToConfigurationFiles() const { return pathToConfigurationFiles; };
-		const std::wstring& getPrefsFile() const { return prefFile; };
-		bool hasValidConfigurationFile() const { return validConfigurationFile; };
+		const std::wstring& getPathToConfigurationFiles() const { return pathToUserConfigurationFiles; };
+		const std::wstring& getPrefsFile() const { return userPrefFile; };
+		bool hasValidConfigurationFile() const { return validUserConfigurationFile; };
 		bool fileLoggerIsActive() const { return activeFileLogger; };
 
 		// booleans

@@ -8,6 +8,9 @@
 *
 * History:	- 05/06/2018: added keyboard support
 *			- 11/06/2018: added mouse support
+*			- 12/06/2018: boost serialization to save and load key bindings
+*
+* ToDo:		- memory leak in load function (possible bug in boost serialization? singleton never gets deleted?)
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -19,10 +22,21 @@
 #include <unordered_map>
 #include <array>
 
+// pointers
+#include <memory>
+
 // bell0bytes utilities
 #include "expected.h"
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
+namespace boost
+{
+	namespace serialization
+	{
+		class access;
+	}
+}
+
 namespace graphics
 {
 	class AnimatedSprite;
@@ -43,6 +57,12 @@ namespace input
 		unsigned int keyCode;		// the actual key code
 		KeyState keyState;			// the state the above specified key has to be in for the "binding" to become active
 	
+		template <typename Archive>				// define serialization, both save and load
+		void serialize(Archive& ar, const unsigned int /*version*/)
+		{
+			ar & keyCode & keyState;
+		}
+
 	public:
 		// constructors and destructor
 		BindInfo();
@@ -51,6 +71,7 @@ namespace input
 
 		friend struct GameCommand;
 		friend class InputHandler;
+		friend class boost::serialization::access;
 	};
 
 	// structure to map a single game command to a chord of key strokes (see above)
@@ -59,6 +80,13 @@ namespace input
 	private:
 		std::wstring name;						// human readable name
 		std::vector<BindInfo> chord;			// the chord mapped to this command, i.e. "shift"+"control"+"F"
+
+		// serialization
+		template <typename Archive>				// define serialization, both save and load
+		void serialize(Archive& ar, const unsigned int /*version*/)
+		{
+			ar & name & chord;
+		}
 
 	public:
 		// constructors and destructor
@@ -69,6 +97,7 @@ namespace input
 		~GameCommand() {};
 
 		friend class InputHandler;
+		friend class boost::serialization::access;
 	};
 
 	// the keyboard and mouse class
@@ -99,9 +128,12 @@ namespace input
 		bool activeKeyboard;										// true iff keyboard input is active
 		bool activeMouse;											// true iff mouse input is active
 
+		const std::wstring& keyBindingsFile;						// file with key bindings
+
 		// polling
 		void update();												// update the active key map
-		
+				
+
 		/////////////////////////////////////////////////////////////////////////////////////////
 		///////////////////////////// KEYBOARD AND MOUSE ////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
@@ -114,9 +146,13 @@ namespace input
 	protected:
 		std::unordered_map<GameCommands, GameCommand*> keyMap;		// list of all possible game commands mapped to the appropriate command structure
 		
+		// load and save the game commands
+		void saveGameCommands();
+		void loadGameCommands();
+
 		// constructor and destructor
-		InputHandler();
-		~InputHandler();
+		InputHandler(const std::wstring& keyBindingsFile);
+		virtual ~InputHandler();
 
 		// initialization
 		virtual void setDefaultKeyMap() = 0;						// set up default controls
@@ -128,7 +164,7 @@ namespace input
 		/////////////////////////////////////////////////////////////////////////////////////////
 		////////////////////////////////// GENERAL //////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
-		std::unordered_map<GameCommands, GameCommand*> activeKeyMap;// list of all active key maps; game acts on each command in this list
+		std::unordered_map<GameCommands, GameCommand&> activeKeyMap;// list of all active key maps; game acts on each command in this list
 
 		void acquireInput();										// reads the state of the game controllers
 		

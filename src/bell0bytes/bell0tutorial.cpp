@@ -31,6 +31,7 @@
 *			- 30/05/2018 - Animated Sprites
 *			- 04/06/2018 - Input Handler + Keyboard
 *			- 10/06/2018 - Mice
+*			- 12/06/2018 - boost serialization
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -69,7 +70,7 @@ protected:
 
 public:
 	// constructor
-	GameInput();
+	GameInput(const std::wstring& keyBindingsFile);
 };
 
 // the core game class, derived from DirectXApp
@@ -149,7 +150,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
 ////////////////////////////// Game Initialization //////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 // constructor and destructor
-DirectXGame::DirectXGame(HINSTANCE hInstance) : DirectXApp(hInstance)
+DirectXGame::DirectXGame(HINSTANCE hInstance) : DirectXApp(hInstance, L"bell0tutorial", L"alpha 1.0")
 { }
 
 // initialize the game
@@ -161,7 +162,7 @@ util::Expected<void> DirectXGame::init(LPCWSTR windowTitle)
 		return applicationInitialization;
 
 	// initialize the input handler
-	try { inputHandler = new GameInput(); }
+	try { inputHandler = new GameInput(this->keyBindingsFile); }
 	catch (...) { return std::runtime_error("Critical error: Unable to create the input handler!"); }
 
 	// initialize game graphics
@@ -271,10 +272,10 @@ DirectXGame::~DirectXGame()
 /////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Input Handler ////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-GameInput::GameInput() : input::InputHandler()
+GameInput::GameInput(const std::wstring& keyBindingsFile) : input::InputHandler(keyBindingsFile)
 {
-	// set default key mappings
-	setDefaultKeyMap();
+	// load default key bindings
+	loadGameCommands();
 }
 
 void GameInput::setDefaultKeyMap()
@@ -288,7 +289,6 @@ void GameInput::setDefaultKeyMap()
 
 	keyMap[input::GameCommands::ShowFPS] = new input::GameCommand(L"Show FPS", bi);
 	keyMap[input::GameCommands::Quit] = new input::GameCommand(L"Quit", VK_ESCAPE, input::KeyState::JustPressed);
-
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
