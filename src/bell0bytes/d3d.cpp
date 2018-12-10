@@ -2,6 +2,7 @@
 #include "serviceLocator.h"
 #include "app.h"
 #include "stringConverter.h"
+#include "d2d.h"
 
 // Lua and Sol
 //#pragma warning( push )
@@ -16,7 +17,7 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructor //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	Direct3D::Direct3D(core::DirectXApp* dxApp) : dxApp(dxApp), desiredColourFormat(DXGI_FORMAT_B8G8R8A8_UNORM), startInFullscreen(false), currentModeIndex(0), currentlyInFullscreen(false), changeMode(false)
+	Direct3D::Direct3D(core::DirectXApp* const dxApp, const core::Window* const window) : dxApp(dxApp), desiredColourFormat(DXGI_FORMAT_B8G8R8A8_UNORM), startInFullscreen(false), currentModeIndex(0), currentlyInFullscreen(false), changeMode(false)
 	{
 		HRESULT hr;
 
@@ -48,11 +49,14 @@ namespace graphics
 		}
 
 		// now that the device and its context are available, create further resouces
-		if (!createResources().wasSuccessful())
+		if (!createResources(nullptr, window).wasSuccessful())
 		{
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::error>("Critical error: Creation of Direct3D resources failed!");
 			throw std::runtime_error("Creation of Direct3D resources failed!");
 		}
+
+		// add core DirectXApp as observer
+		addObserver(dxApp);
 
 		//  log success
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Direct3D was initialized successfully.");
@@ -72,7 +76,7 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Resource Creation ////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<void> Direct3D::createResources()
+	util::Expected<void> Direct3D::createResources(Direct2D* const d2d, const core::Window* const window)
 	{
 		// create the swap chain
 
@@ -89,7 +93,7 @@ namespace graphics
 		scd.SampleDesc.Quality = 0;
 		scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;							// use back buffer as render target
 		scd.BufferCount = 3;														// the number of buffers in the swap chain (including the front buffer)
-		scd.OutputWindow = dxApp->appWindow->getMainWindowHandle();					// set the main window as output target
+		scd.OutputWindow = dxApp->getMainWindow();									// set the main window as output target
 		scd.Windowed = true;														// windowed, not fullscreen$
 		scd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;								// flip mode and discarded buffer after presentation
 		scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;							// allow mode switching
@@ -144,7 +148,7 @@ namespace graphics
 		// if the current resolution is not supported, switch to the lowest supported resolution
 		bool supportedMode = false;
 		for (unsigned int i = 0; i < numberOfSupportedModes; i++)
-			if ((unsigned int)dxApp->appWindow->clientWidth == supportedModes[i].Width && dxApp->appWindow->clientHeight == supportedModes[i].Height)
+			if ((unsigned int)window->getClientWidth() == supportedModes[i].Width && (unsigned int)window->getClientHeight() == supportedModes[i].Height)
 			{
 				supportedMode = true;
 				currentModeDescription = supportedModes[i];
@@ -180,14 +184,14 @@ namespace graphics
 			currentlyInFullscreen = false;
 
 		// the remaining steps need to be done each time the window is resized
-		if (!onResize().wasSuccessful())
+		if (!onResize(d2d).wasSuccessful())
 			return std::runtime_error("Direct3D was unable to resize its resources!");
 
 		// return success
 		return {};
 	}
 
-	util::Expected<void> Direct3D::onResize()
+	util::Expected<void> Direct3D::onResize(Direct2D* const d2d)
 	{
 		// Microsoft recommends zeroing out the refresh rate of the description before resizing the targets
 		DXGI_MODE_DESC zeroRefreshRate = currentModeDescription;
@@ -218,10 +222,10 @@ namespace graphics
 					return std::runtime_error("Unable to switch to windowed mode mode!");
 
 				// recompute client area and set new window size
-				RECT rect = { 0, 0, (long)dxApp->d3d->currentModeDescription.Width,  (long)dxApp->d3d->currentModeDescription.Height };
+				RECT rect = { 0, 0, (long)currentModeDescription.Width,  (long)currentModeDescription.Height };
 				if (FAILED(AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, WS_EX_OVERLAPPEDWINDOW)))
 					return std::runtime_error("Failed to adjust window rectangle!");
-				SetWindowPos(dxApp->appWindow->mainWindow, HWND_TOP, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE);
+				SetWindowPos(dxApp->getMainWindow(), HWND_TOP, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE);
 			}
 
 			// change fullscreen mode
@@ -233,8 +237,8 @@ namespace graphics
 			return std::runtime_error("Unable to resize target!");
 
 		// release and reset all resources
-		if (dxApp->d2d)
-			dxApp->d2d->devCon->SetTarget(nullptr);
+		if (d2d)
+			d2d->devCon->SetTarget(nullptr);
 
 		devCon->ClearState();
 		renderTargetView = nullptr;
@@ -277,13 +281,13 @@ namespace graphics
 		devCon->RSSetViewports(1, &vp);
 
 		// (re)-create the Direct2D target bitmap associated with the swap chain back buffer and set it as the current target
-		if(dxApp->d2d)
-			if(!dxApp->d2d->createBitmapRenderTarget().wasSuccessful())
+		if(d2d)
+			if(!d2d->createBitmapRenderTarget(this).wasSuccessful())
 				return std::runtime_error("Direct3D was unable to resize the Direct2D bitmap render target!");
 
 		// re-create Direct2D device dependent resources
-		if (dxApp->d2d)
-			if (!dxApp->d2d->createDeviceDependentResources().wasSuccessful())
+		if (d2d)
+			if (!d2d->createDeviceDependentResources().wasSuccessful())
 				return std::runtime_error("Direct3D was unable to resize the Direct2D device dependent resources!");
 
 		// re-initialize GPU pipeline
@@ -291,7 +295,7 @@ namespace graphics
 
 		// log and return success
 #ifndef NDEBUG
-		if (dxApp->hasStarted)
+		if (dxApp->gameHasStarted())
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The Direct3D and Direct2D resources were resized successfully.");
 #endif
 		return {};
@@ -304,11 +308,11 @@ namespace graphics
 	{
 		// load Compiled Shader Object files
 #ifndef NDEBUG
-		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../../x64/Debug/vertexShader.cso");
-		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../../x64/Debug/pixelShader.cso");
+		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../x64/Debug/vertexShader.cso");
+		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../x64/Debug/pixelShader.cso");
 #else
-		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../../x64/Release/vertexShader.cso");
-		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../../x64/Release/pixelShader.cso");
+		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../x64/Release/vertexShader.cso");
+		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../x64/Release/pixelShader.cso");
 #endif
 		if (!vertexShaderBuffer.wasSuccessful() || !pixelShaderBuffer.wasSuccessful())
 			return "Critical error: Unable to read Compiled Shader Object files!";
@@ -361,7 +365,7 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////// Shaders ////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<ShaderBuffer> Direct3D::loadShader(std::wstring filename)
+	const util::Expected<ShaderBuffer> Direct3D::loadShader(const std::wstring filename) const
 	{
 		// load precompiled shaders from .cso objects
 		ShaderBuffer sb;
@@ -394,12 +398,15 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	void Direct3D::clearBuffers()
 	{
-		// clear the Direct2D render target
-
 		// clear the back buffer and depth / stencil buffer
-		float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-		float white[] = { 1.0f, 1.0f, 1.0f, 1.0f };	
-		devCon->ClearRenderTargetView(renderTargetView.Get(), white);
+		float white[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		this->clearBuffers(white);
+	}
+
+	void Direct3D::clearBuffers(float colour[4])
+	{
+		// clear the back buffer and depth / stencil buffer
+		devCon->ClearRenderTargetView(renderTargetView.Get(), colour);
 		devCon->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	}
 
@@ -453,19 +460,31 @@ namespace graphics
 			currentModeDescription = supportedModes[currentModeIndex];
 
 			// resize everything
-			dxApp->onResize();
+			notify(input::Events::ChangeResolution);
 		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////// Getters //////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	util::Expected<bool> Direct3D::switchFullscreen() const
+	{
+		BOOL fullscreen;
+		if (FAILED(swapChain->GetFullscreenState(&fullscreen, nullptr)))
+			return std::runtime_error("Error: Unable to query fullscreen state!");
+
+		return(fullscreen != currentlyInFullscreen ? true : false);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Helper Functions /////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<void> Direct3D::writeCurrentModeDescriptionToConfigurationFile()
+	util::Expected<void> Direct3D::writeCurrentModeDescriptionToConfigurationFile() const
 	{
 		// create the string to print
 		std::string resolution = "\tresolution = { width = " + std::to_string(currentModeDescription.Width) + ", height = " + std::to_string(currentModeDescription.Height) + " }";
 		// append name of the log file to the path
-		std::wstring pathToPrefFile = dxApp->pathToConfigurationFiles + L"\\" + dxApp->prefFile;
+		std::wstring pathToPrefFile = dxApp->getPathToConfigurationFiles() + L"\\" + dxApp->getPrefsFile();
 
 		// read the file
 		std::vector<std::string> data;
@@ -506,10 +525,10 @@ namespace graphics
 
 	util::Expected<void> Direct3D::readConfigurationFile()
 	{
-		if (dxApp->validConfigurationFile)
+		if (dxApp->hasValidConfigurationFile())
 		{
 			// configuration file exists, try to read from it
-			std::wstring pathToPrefFile = dxApp->pathToConfigurationFiles + L"\\" + dxApp->prefFile;
+			std::wstring pathToPrefFile = dxApp->getPathToConfigurationFiles() + L"\\" + dxApp->getPrefsFile();
 
 			try
 			{

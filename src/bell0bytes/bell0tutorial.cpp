@@ -29,17 +29,10 @@
 *			- 27/05/2018 - Bitmaps
 *			- 28/05/2018 - Sprites
 *			- 30/05/2018 - Animated Sprites
+*			- 04/06/2018 - Input Handler
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
-
-// windows includes
-#include <windows.h>
-#include <wincodec.h>	// Windows Imaging Component
-
-// exceptions
-#include <exception>
-#include <stdexcept>
 
 // bell0bytes core
 #include "app.h"
@@ -48,43 +41,67 @@
 #include "expected.h"							// error handling with "expected"
 #include "serviceLocator.h"						// enables global access to services
 
-// bell0bytes graphics
-#include "graphicsHelper.h"
-#include "sprites.h"
-
-#include <d2d1effects.h>
-#pragma comment (lib, "dxguid.lib")
+// bell0bytes input
+#include "inputHandler.h"
 
 
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
 
+// define game commands
+namespace input
+{
+	enum GameCommands { Quit, showFPS };
+}
+
 // CLASSES //////////////////////////////////////////////////////////////////////////////
+
+// the input handler derived from InputHandler class
+class GameInput : public input::InputHandler
+{
+private:
+
+protected:
+	// initialization
+	virtual void setDefaultKeyMap() override;
+
+public:
+	// constructor
+	GameInput();
+};
 
 // the core game class, derived from DirectXApp
 class DirectXGame : core::DirectXApp
 {
 private:
-	graphics::AnimationData* wolfAnimations;
-	graphics::AnimatedSprite* wolf;
 	
 public:
 	// constructor and destructor
 	DirectXGame(HINSTANCE hInstance);
 	~DirectXGame();
 
-	// override virtual functions
-	util::Expected<void> init() override;								// game initialization
-	void shutdown(util::Expected<void>* expected = NULL) override;		// cleans up and shuts the game down (handles errors)
-	util::Expected<int> update(double dt);								// update the game world
-	util::Expected<int> render(double farSeer);							// render the scene
-	util::Expected<void> onResize();									// resize the game graphics
-
-	// create graphics
+	// game initialization
+	util::Expected<void> init(LPCWSTR windowTitle) override;			// game initialization
+	util::Expected<void> onResize() const override;						// resize the game graphics
 	util::Expected<void> initGraphics();								// initializes graphics
+
+	// game shutdown
+	void shutdown(const util::Expected<void>* const expected = NULL) override;// cleans up and shuts the game down (handles errors)
+	void releaseMemory();
+	
+	// game input
+	GameInput* inputHandler;
+	void acquireInput() override;
+
+	// game update
+	util::Expected<int> update(const double dt) override;				// update the game world
+	
+	// render
+	util::Expected<int> render(const double farSeer) override;			// render the scene
 
 	// run the game
 	util::Expected<int> run() override;
 };
+
 
 // FUNCTIONS ////////////////////////////////////////////////////////////////////////////
 
@@ -95,7 +112,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
 {
 	// create and initialize the game
 	DirectXGame game(hInstance);
-	util::Expected<void> gameInitialization = game.init();
+	util::Expected<void> gameInitialization = game.init(L"bell0tutorial");
 
 	// if the initialization was successful, run the game, else, try to clean up and exit the application
 	if (gameInitialization.wasSuccessful())
@@ -129,14 +146,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpC
 // constructor and destructor
 DirectXGame::DirectXGame(HINSTANCE hInstance) : DirectXApp(hInstance)
 { }
-DirectXGame::~DirectXGame()
-{ }
 
 // initialize the game
-util::Expected<void> DirectXGame::init()
+util::Expected<void> DirectXGame::init(LPCWSTR windowTitle)
 {
 	// initialize the core DirectX application
-	util::Expected<void> applicationInitialization = DirectXApp::init();
+	util::Expected<void> applicationInitialization = DirectXApp::init(windowTitle);
 	if (!applicationInitialization.wasSuccessful())
 		return applicationInitialization;
 
@@ -144,6 +159,9 @@ util::Expected<void> DirectXGame::init()
 	applicationInitialization = initGraphics();
 	if(!applicationInitialization.wasSuccessful())
 		return applicationInitialization;
+
+	// initialize the input handler
+	inputHandler = new GameInput();
 
 	// log and return success
 	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Game initialization was successful.");
@@ -153,60 +171,26 @@ util::Expected<void> DirectXGame::init()
 // initialize graphics
 util::Expected<void> DirectXGame::initGraphics()
 {	
-	std::vector<graphics::AnimationCycleData> wolfAnimationsCycles;
-	graphics::AnimationCycleData cycle;
-	
-	// wolf on attention cycle
-	cycle.name = L"Wolf Running";
-	cycle.startFrame = 0;
-	cycle.numberOfFrames = 5;
-	cycle.width = 25;
-	cycle.height = 64;
-	cycle.paddingWidth = 0;
-	cycle.paddingHeight = 1;
-	cycle.borderPaddingHeight = cycle.borderPaddingWidth = 1;
-	cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
-	wolfAnimationsCycles.push_back(cycle);
-
-	// angry wolf animation cycle
-	cycle.name = L"Wolf Attack";
-	cycle.startFrame = 0;
-	cycle.numberOfFrames = 5;
-	cycle.width = 24;
-	cycle.height = 62;
-	cycle.paddingWidth = cycle.paddingHeight = 0;
-	cycle.borderPaddingWidth = 1;
-	cycle.borderPaddingHeight = 0;
-	cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
-	wolfAnimationsCycles.push_back(cycle);
-
-	// create wolf animations
-	try { wolfAnimations = new graphics::AnimationData(d2d, L"Art/wolfAnimations.png", wolfAnimationsCycles); }
-	catch (std::runtime_error& e){ return e; }
-
-	// create wolf
-	wolf = new graphics::AnimatedSprite(d2d, wolfAnimations, 0, 24, 400, 300);
-
-	wolfAnimationsCycles.clear();
-	std::vector<graphics::AnimationCycleData>(wolfAnimationsCycles).swap(wolfAnimationsCycles);
-
-	// return success
+	// log and return success
+	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Game graphics were successfully initialized.");
 	return {};
 }
 
 // resize graphics
-util::Expected<void> DirectXGame::onResize()
+util::Expected<void> DirectXGame::onResize() const
 {
 	// resize application data, Direct2D and Direct3d
 	if (!DirectXApp::onResize().wasSuccessful())
 		return std::runtime_error("Critical Error: Failed to resize game resources!");
 
 	// return success
-	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>(std::stringstream("The game resources were resized succesfully!"));
+	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>(std::stringstream("The game resources were resized succesfully."));
 	return { };
 }
 
-
+/////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////// Start and End ////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////
 // run the game
 util::Expected<int> DirectXGame::run()
 {
@@ -215,7 +199,7 @@ util::Expected<int> DirectXGame::run()
 }
 
 // shutdown
-void DirectXGame::shutdown(util::Expected<void>* expected)
+void DirectXGame::shutdown(const util::Expected<void>* const expected)
 {
 	// check for error message
 	if (expected != NULL && !expected->isValid())
@@ -225,6 +209,7 @@ void DirectXGame::shutdown(util::Expected<void>* expected)
 		try
 		{
 			// do clean up
+			releaseMemory();
 
 			// throw error
 			expected->get();
@@ -235,28 +220,83 @@ void DirectXGame::shutdown(util::Expected<void>* expected)
 			if (DirectXApp::fileLoggerIsActive())
 			{
 				std::stringstream errorMessage;
-				errorMessage << "The game is shutting down with a critical error: " << e.what();
+				errorMessage << "Shutdow! " << e.what();
+				util::ServiceLocator::getFileLogger()->print<util::SeverityType::error>(std::stringstream(errorMessage.str()));
+			}
+			return;
+		}
+		catch (...)
+		{
+			// create and print error message string (if the logger is available)
+			if (DirectXApp::fileLoggerIsActive())
+			{
+				std::stringstream errorMessage;
+				errorMessage << "The game is shutting down with a critical error!";
 				util::ServiceLocator::getFileLogger()->print<util::SeverityType::error>(std::stringstream(errorMessage.str()));
 			}
 			return;
 		}
 	}
 
-	delete wolf;
-	delete wolfAnimations;
-
-
 	// no error: clean up and shut down normally
+	releaseMemory();
 	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The game was shut down successfully.");
+}
+
+void DirectXGame::releaseMemory()
+{
+	// release the input handler
+	delete inputHandler;
+}
+
+DirectXGame::~DirectXGame()
+{ }
+
+/////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////// Input Handler ////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////
+GameInput::GameInput()
+{
+	setDefaultKeyMap();
+}
+
+void GameInput::setDefaultKeyMap()
+{
+	keyMap.clear();
+	std::vector<input::BindInfo> bi;
+	bi.push_back(input::BindInfo(VK_SHIFT, input::KeyState::StillPressed));
+	bi.push_back(input::BindInfo(VK_CONTROL, input::KeyState::StillPressed));
+	bi.push_back(input::BindInfo('F', input::KeyState::JustPressed));
+	keyMap[input::GameCommands::Quit] = new input::GameCommand(L"Quit", VK_ESCAPE, input::KeyState::JustPressed);
+	keyMap[input::GameCommands::showFPS] = new input::GameCommand(L"showFPS", bi);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// Update ////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-util::Expected<int> DirectXGame::update(double deltaTime)
+void DirectXGame::acquireInput()
+{
+	inputHandler->acquireInput();
+
+	// act on user input
+	for (auto x : inputHandler->activeKeyMap)
+	{
+		switch (x.first)
+		{
+		case input::GameCommands::Quit:
+			PostMessage(appWindow->getMainWindowHandle(), WM_CLOSE, 0, 0);
+			break;
+
+		case input::GameCommands::showFPS:
+			showFPS = !showFPS;
+			break;
+		}
+	}
+}
+
+util::Expected<int> DirectXGame::update(const double /*deltaTime*/)
 {	
 	// update the game world
-	wolf->updateAnimation(deltaTime);
 
 	// return success
 	return 0;
@@ -265,7 +305,7 @@ util::Expected<int> DirectXGame::update(double deltaTime)
 /////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////// Render ////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-util::Expected<int> DirectXGame::render(double /*farSeer*/)
+util::Expected<int> DirectXGame::render(const double /*farSeer*/)
 {
 	// clear the back buffer and the depth/stencil buffer
 	d3d->clearBuffers();
@@ -273,19 +313,12 @@ util::Expected<int> DirectXGame::render(double /*farSeer*/)
 	////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Direct2D /////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////
-	d2d->devCon->BeginDraw();
-
-	d2d->matrixScaling = D2D1::Matrix3x2F::Scale(3, 3, D2D1::Point2F(400, 300));
-	d2d->devCon->SetTransform(d2d->matrixScaling);
-
-	wolf->draw();
-
-	d2d->devCon->SetTransform(D2D1::Matrix3x2F::Identity());
+	d2d->beginDraw();
 
 	// print FPS information
-	d2d->printFPS(d2d->blackBrush.Get());
+	d2d->printFPS();
 
-	if(FAILED(d2d->devCon->EndDraw()))
+	if(!d2d->endDraw().wasSuccessful())
 		return std::runtime_error("Failed to draw 2D graphics!");
 	
 	////////////////////////////////////////////////////////////////////////////////////////

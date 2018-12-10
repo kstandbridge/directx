@@ -11,61 +11,19 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructor //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	Sprite::Sprite(Direct2D* d2d, LPCWSTR imageFile, float x, float y, Layers layer, unsigned int drawOrder) : d2d(d2d), x(x), y(y), layer(layer), drawOrder(drawOrder)
+	Sprite::Sprite(Direct2D* const d2d, LPCWSTR imageFile, const float x, const float y, const Layers layer, const unsigned int drawOrder) : d2d(d2d), x(x), y(y), layer(layer), drawOrder(drawOrder)
 	{
-		// create decoder
-		Microsoft::WRL::ComPtr<IWICBitmapDecoder> bitmapDecoder;
-		if (FAILED(d2d->WICFactory->CreateDecoderFromFilename(imageFile, NULL, GENERIC_READ, WICDecodeMetadataCacheOnLoad, bitmapDecoder.ReleaseAndGetAddressOf())))
-			throw std::runtime_error("Failed to create decoder from filename!");
-
-		// get the correct frame
-		Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> frame;
-		if (FAILED(bitmapDecoder->GetFrame(0, frame.ReleaseAndGetAddressOf())))
-			throw std::runtime_error("Failed to retrieve frame from bitmap!");
-
-		// create the format converter
-		Microsoft::WRL::ComPtr<IWICFormatConverter> image;
-		if (FAILED(d2d->WICFactory->CreateFormatConverter(image.ReleaseAndGetAddressOf())))
-			throw std::runtime_error("Failed to create the format converter!");
-
-		// initialize the WIC image
-		if (FAILED(image->Initialize(frame.Get(), GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, NULL, 0, WICBitmapPaletteTypeCustom)))
-			throw std::runtime_error("Failed to initialize the WIC image!");
-
-		// create the bitmap
-		if (FAILED(d2d->devCon->CreateBitmapFromWicBitmap(image.Get(), this->bitmap.ReleaseAndGetAddressOf())))
-			throw std::runtime_error("Failed to create the bitmap image!");
+		d2d->createBitmapFromWICBitmap(imageFile, bitmap);
 	}
 
-	Sprite::Sprite(Direct2D* d2d, ID2D1Bitmap1* bitmap, float x, float y, Layers layer, unsigned int drawOrder) : d2d(d2d), bitmap(bitmap), x(x), y(y), layer(layer), drawOrder(drawOrder)
+	Sprite::Sprite(Direct2D* const d2d, ID2D1Bitmap1* const bitmap, const float x, const float y, const Layers layer, const unsigned int drawOrder) : d2d(d2d), bitmap(bitmap), x(x), y(y), layer(layer), drawOrder(drawOrder)
 	{
 
 	}
 
-	AnimationData::AnimationData(Direct2D* d2d, LPCWSTR spriteSheetFile, std::vector<AnimationCycleData> cyclesData) : cyclesData(cyclesData)
+	AnimationData::AnimationData(Direct2D* const d2d, LPCWSTR spriteSheetFile, const std::vector<AnimationCycleData>& cyclesData) : cyclesData(cyclesData)
 	{
-		// create decoder
-		Microsoft::WRL::ComPtr<IWICBitmapDecoder> bitmapDecoder;
-		if (FAILED(d2d->WICFactory->CreateDecoderFromFilename(spriteSheetFile, NULL, GENERIC_READ, WICDecodeMetadataCacheOnLoad, bitmapDecoder.ReleaseAndGetAddressOf())))
-			throw std::runtime_error("Failed to create decoder from filename!");
-
-		// get the correct frame
-		Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> frame;
-		if (FAILED(bitmapDecoder->GetFrame(0, frame.ReleaseAndGetAddressOf())))
-			throw std::runtime_error("Failed to retrieve frame from bitmap!");
-
-		// create the format converter
-		Microsoft::WRL::ComPtr<IWICFormatConverter> image;
-		if (FAILED(d2d->WICFactory->CreateFormatConverter(image.ReleaseAndGetAddressOf())))
-			throw std::runtime_error("Failed to create the format converter!");
-
-		// initialize the WIC image
-		if (FAILED(image->Initialize(frame.Get(), GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, NULL, 0, WICBitmapPaletteTypeCustom)))
-			throw std::runtime_error("Failed to initialize the WIC image!");
-
-		// create the bitmap
-		if (FAILED(d2d->devCon->CreateBitmapFromWicBitmap(image.Get(), this->spriteSheet.ReleaseAndGetAddressOf())))
-			throw std::runtime_error("Failed to create the bitmap image!");
+		d2d->createBitmapFromWICBitmap(spriteSheetFile, spriteSheet);
 	}
 
 	SpriteMap::SpriteMap()
@@ -73,15 +31,9 @@ namespace graphics
 
 	}
 
-	AnimatedSprite::AnimatedSprite(Direct2D* d2d, AnimationData *animationData, unsigned int activeAnimation, float animationFPS, float x, float y, Layers layer, unsigned int drawOrder) : animationData(animationData), activeAnimation(activeAnimation), animationFPS(animationFPS)
+	AnimatedSprite::AnimatedSprite(Direct2D* const d2d, AnimationData* const animationData, const unsigned int activeAnimation, const float animationFPS, const float x, const float y, const Layers layer, const unsigned int drawOrder) : Sprite(d2d, animationData->spriteSheet.Get(), x, y, layer, drawOrder), animationData(animationData), activeAnimation(activeAnimation), animationFPS(animationFPS), activeAnimationFrame(0)
 	{
-		this->bitmap = animationData->spriteSheet;
-		this->d2d = d2d;
-		this->drawOrder = drawOrder;
-		this->layer = layer;
-		this->x = x;
-		this->y = y;
-		this->activeAnimationFrame = 0;
+
 	}
 	
 	Sprite::~Sprite()
@@ -118,26 +70,26 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Populating //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void SpriteMap::addSprite(Sprite* sprite)
+	void SpriteMap::addSprite(Sprite* const sprite)
 	{
 		Layers layer = sprite->layer;
 		switch (layer)
 		{
 		case Layers::Background:
-			backgroundMap.insert(std::make_pair<unsigned int, Sprite*>(std::move(sprite->drawOrder), std::move(sprite)));
+			backgroundMap.insert(std::make_pair<unsigned int, Sprite*const>(std::move(sprite->drawOrder), std::move(sprite)));
 			break;
 
 		case Layers::Characters:
-			characterMap.insert(std::make_pair<unsigned int, Sprite*>(std::move(sprite->drawOrder), std::move(sprite)));
+			characterMap.insert(std::make_pair<unsigned int, Sprite*const>(std::move(sprite->drawOrder), std::move(sprite)));
 			break;
 
 		case Layers::UserInterface:
-			userInterfaceMap.insert(std::make_pair<unsigned int, Sprite*>(std::move(sprite->drawOrder), std::move(sprite)));
+			userInterfaceMap.insert(std::make_pair<unsigned int, Sprite*const>(std::move(sprite->drawOrder), std::move(sprite)));
 			break;
 		}
 	}
 
-	util::Expected<void> SpriteMap::addSprite(Direct2D* d2d, LPCWSTR imageFile, float x, float y, Layers layer, unsigned int drawOrder)
+	util::Expected<void> SpriteMap::addSprite(Direct2D* const d2d, LPCWSTR imageFile, const float x, const float y, const Layers layer, unsigned int drawOrder)
 	{
 		try
 		{
@@ -146,15 +98,15 @@ namespace graphics
 			switch (l)
 			{
 			case Layers::Background:
-				backgroundMap.insert(std::make_pair<unsigned int, Sprite*>(std::move(drawOrder), new Sprite(d2d, imageFile, x, y, layer, drawOrder)));
+				backgroundMap.insert(std::make_pair<unsigned int, Sprite*const>(std::move(drawOrder), new Sprite(d2d, imageFile, x, y, layer, drawOrder)));
 				break;
 
 			case Layers::Characters:
-				characterMap.insert(std::make_pair<unsigned int, Sprite*>(std::move(drawOrder), new Sprite(d2d, imageFile, x, y, layer, drawOrder)));
+				characterMap.insert(std::make_pair<unsigned int, Sprite*const>(std::move(drawOrder), new Sprite(d2d, imageFile, x, y, layer, drawOrder)));
 				break;
 
 			case Layers::UserInterface:
-				userInterfaceMap.insert(std::make_pair<unsigned int, Sprite*>(std::move(drawOrder), new Sprite(d2d, imageFile, x, y, layer, drawOrder)));
+				userInterfaceMap.insert(std::make_pair<unsigned int, Sprite*const>(std::move(drawOrder), new Sprite(d2d, imageFile, x, y, layer, drawOrder)));
 				break;
 			}
 		}
@@ -170,7 +122,7 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////// Drawing //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void Sprite::draw(D2D1_RECT_F* destRect, D2D1_RECT_F* sourceRect, float opacity, D2D1_BITMAP_INTERPOLATION_MODE interPol)
+	void Sprite::draw(const D2D1_RECT_F* const destRect, const D2D1_RECT_F* const sourceRect, const float opacity, const D2D1_BITMAP_INTERPOLATION_MODE interPol) const
 	{
 		if (!destRect)
 		{
@@ -186,7 +138,7 @@ namespace graphics
 			d2d->devCon->DrawBitmap(bitmap.Get(), destRect, opacity, interPol, sourceRect);
 	}
 
-	void AnimatedSprite::draw()
+	void AnimatedSprite::draw() const
 	{
 		unsigned int cycle = this->activeAnimation;
 		unsigned int frame = this->activeAnimationFrame;
@@ -219,7 +171,7 @@ namespace graphics
 		Sprite::draw(&destRect, &sourceRect);
 	}
 
-	void SpriteMap::draw(D2D1_RECT_F* destRect, D2D1_RECT_F* sourceRect, DrawCommands drawCommand, float opacity, D2D1_BITMAP_INTERPOLATION_MODE interPol)
+	void SpriteMap::draw(D2D1_RECT_F* const destRect, D2D1_RECT_F* const sourceRect, const DrawCommands drawCommand, const float opacity, const D2D1_BITMAP_INTERPOLATION_MODE interPol) const
 	{
 		D2D1_RECT_F* rect;
 		if (destRect)
@@ -267,7 +219,7 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////// Updating//////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void AnimatedSprite::changeAnimation(unsigned int cycleToActivate)
+	void AnimatedSprite::changeAnimation(const unsigned int cycleToActivate)
 	{
 		if (cycleToActivate > this->animationData->cyclesData.size())
 		{
@@ -288,7 +240,7 @@ namespace graphics
 		}
 	}
 
-	void AnimatedSprite::updateAnimation(double deltaTime)
+	void AnimatedSprite::updateAnimation(const double deltaTime)
 	{
 		// update how long the currently active frame has been displayed
 		frameTime += deltaTime;

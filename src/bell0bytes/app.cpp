@@ -35,7 +35,7 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////// Create Core App Components  //////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<void> DirectXApp::init()
+	util::Expected<void> DirectXApp::init(LPCWSTR windowTitle)
 	{
 		// get path to My Documents folder
 		if (!getPathToMyDocuments())
@@ -66,25 +66,29 @@ namespace core
 		}
 
 		// create the application window
-		try { appWindow = new Window(this); }
+		try { appWindow = new Window(this, windowTitle); }
 		catch (std::runtime_error)
 		{
 			return std::runtime_error("DirectXApp was unable to create the main window!");
 		}
 
 		// initialize Direct3D
-		try { d3d = new graphics::Direct3D(this); }
+		try { d3d = new graphics::Direct3D(this, appWindow); }
 		catch (std::runtime_error)
 		{
 			return std::runtime_error("DirectXApp was unable to initialize Direct3D!");
 		}
 
 		// initialize Direct2D
-		try { d2d = new graphics::Direct2D(this); }
+		try { d2d = new graphics::Direct2D(this, d3d); }
 		catch (std::runtime_error)
 		{
 			return std::runtime_error("DirectXApp was unable to initialize Direct2D!");
 		}
+		
+		// start game
+		timer->start();
+		isPaused = false;
 
 		// log and return success
 		hasStarted = true;
@@ -92,7 +96,7 @@ namespace core
 		return {};
 	}
 
-	void DirectXApp::shutdown(util::Expected<void>* /*expected*/)
+	void DirectXApp::shutdown(const util::Expected<void>* /*expected*/)
 	{
 		if (d2d)
 			delete d2d;
@@ -121,7 +125,7 @@ namespace core
 		// reset (start) the timer
 		timer->reset();
 
-		double accumulatedTime = 0.0;		// stores the time accumulated by the rendered
+		double accumulatedTime = 0.0;		// stores the time accumulated by the renderer
 		int nLoops = 0;						// the number of completed loops while updating the game
 
 		// enter main event loop
@@ -152,9 +156,10 @@ namespace core
 
 				// compute fps
 				if (!calculateFrameStatistics().wasSuccessful())
-					return util::Expected<int>("Critical error: Unable to calculate frame statistics!");
+					return util::Expected<int>(std::runtime_error("Critical error: Unable to calculate frame statistics!"));
 
 				// acquire input
+				acquireInput();
 
 				// accumulate the elapsed time since the last frame
 				accumulatedTime += timer->getDeltaTime();
@@ -184,50 +189,43 @@ namespace core
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////// Input ///////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-	void DirectXApp::onKeyDown(WPARAM wParam, LPARAM /*lParam*/)
-	{
-		switch (wParam)
-		{
-		case VK_F1:
-			showFPS = !showFPS;
-			break;
-
-		case VK_ESCAPE:
-			PostMessage(appWindow->mainWindow, WM_CLOSE, 0, 0);
-			break;
-
-		case VK_PRIOR:	
-			// page up -> chose higher resolution
-			d3d->changeResolution(true);
-			break;
-
-		case VK_NEXT:
-			// page down -> chose lower resolution
-			d3d->changeResolution(false);
-			break;
-
-		default: break;
-
-		}
-	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Resizing ////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<void> DirectXApp::onResize()
+	util::Expected<void> DirectXApp::onResize() const
 	{
 #ifndef NDEBUG
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("The window was resized. The game graphics must be updated!");
 #endif
-		if (!d3d->onResize().wasSuccessful())
+		if (!d3d->onResize(d2d).wasSuccessful())
 			return std::runtime_error("Unable to resize Direct3D resources!");
 
 		// return success
 		return {};
 	}
-	
+
+	util::Expected<void> DirectXApp::checkFullscreen()
+	{
+		if (hasStarted)
+		{
+			util::Expected<bool> switchFullscreenState = d3d->switchFullscreen();
+			if (switchFullscreenState.isValid())
+			{
+				if (switchFullscreenState.get())
+				{	// fullscreen mode changed, pause the application, resize everything and unpause the application again
+					isPaused = true;
+					timer->stop();
+					onResize();
+					timer->start();
+					isPaused = false;
+				}
+			}
+			else
+				return switchFullscreenState;
+		}
+
+		return { };
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////// Frame Statistics ///////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -249,12 +247,12 @@ namespace core
 				// create FPS information text layout
 				std::wostringstream outFPS;
 				outFPS.precision(6);
-				outFPS << "Resolution: " << d3d->currentModeDescription.Width << " x " << d3d->currentModeDescription.Height << " @ " << d3d->currentModeDescription.RefreshRate.Numerator / d3d->currentModeDescription.RefreshRate.Denominator << " Hz" << std::endl;
-				outFPS << "Mode #" << d3d->currentModeIndex+1 << " of " << d3d->numberOfSupportedModes << std::endl;
+				outFPS << "Resolution: " << d3d->getCurrentWidth() << " x " << d3d->getCurrentHeight() << " @ " << d3d->getCurrentRefreshRateNum() / d3d->getCurrentRefreshRateDen() << " Hz" << std::endl;
+				outFPS << "Mode #" << d3d->getCurrentModeIndex()+1 << " of " << d3d->getNumberOfSupportedModes() << std::endl;
 				outFPS << "FPS: " << DirectXApp::fps << std::endl;
 				outFPS << "mSPF: " << DirectXApp::mspf << std::endl;
 
-				if (FAILED(d2d->writeFactory->CreateTextLayout(outFPS.str().c_str(), (UINT32)outFPS.str().size(), d2d->textFormatFPS.Get(), (float)appWindow->clientWidth, (float)appWindow->clientHeight, (IDWriteTextLayout **)d2d->textLayoutFPS.GetAddressOf())))
+				if (!(d2d->createTextLayoutFPS(&outFPS, (float)d3d->getCurrentWidth(), (float)d3d->getCurrentHeight())).wasSuccessful())
 					return std::runtime_error("Critical error: Failed to create the text layout for FPS information!");
 			}
 
@@ -264,6 +262,56 @@ namespace core
 		}
 
 		// return success
+		return { };
+	}
+	/////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////// Timing //////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	void DirectXApp::pauseGame()
+	{
+		isPaused = true;
+		timer->stop();
+	}
+
+	void DirectXApp::resumeGame(bool recreateGraphics, bool restartTimer)
+	{
+		if (recreateGraphics && hasStarted)
+			onResize();
+
+		if (restartTimer)
+		{
+			timer->start();
+			isPaused = false;
+		}
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////// Notification /////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	util::Expected<void> DirectXApp::onNotify(const int event)
+	{
+		switch (event)
+		{
+		case input::Events::PauseApplication:
+			pauseGame();
+			break;
+		case input::Events::ResumeApplication:
+			resumeGame(false, true);
+			break;
+		case input::Events::ChangeResolution:
+			resumeGame(true, false);
+			break;
+		case input::Events::SwitchFullscreen:
+			if (!checkFullscreen().wasSuccessful())
+				return std::runtime_error("Critital error: Unable to check fullscreen state!");
+			break;
+		case input::Events::WindowChanged:
+			resumeGame(true, true);
+			break;
+		default:
+			break;
+		}
+
 		return { };
 	}
 

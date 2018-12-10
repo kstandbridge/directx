@@ -8,6 +8,8 @@
 *
 * History:	- 06/08/2017: Direct2D added
 *			- 13/03/2018: fullscreen support added
+*			- 03/06/2018: sends notifications to the DirectX class whenever the screen resolution must be changed
+*			- 03/06/2018: the DirectXApp class is no longer a friend
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -19,21 +21,23 @@
 #include <d3d11_4.h>
 #pragma comment (lib, "d3d11.lib")
 
+// bell0bytes graphics
+#include "d2d.h"
+
 // bell0bytes utilities
 #include "expected.h"
+#include "observer.h"
 
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
 
 // forward definitions
-class DirectXGame;
 namespace core
 {
-	class DirectXApp;
 	class Window;
+	class DirectXApp;
 }
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
-
 namespace graphics
 {
 	// structure to hold vertex data
@@ -58,11 +62,11 @@ namespace graphics
 		int size;
 	};
 
-	class Direct3D
+	class Direct3D : public util::Subject
 	{
 	private:
 		// members
-		core::DirectXApp* dxApp;								// pointer to the main application class
+		const core::DirectXApp* const dxApp;								// pointer to the main application class
 
 		// Direct3D
 		Microsoft::WRL::ComPtr<ID3D11Device> dev;							// the actual Direct3D device
@@ -92,31 +96,42 @@ namespace graphics
 		void changeResolution(bool increase);					// changes the screen resolution, if increase is true, a higher resolution is chosen, else the resolution is lowered
 
 		// helper functions
-		util::Expected<void> writeCurrentModeDescriptionToConfigurationFile();	// write the current screen resolution to the configuration file
+		util::Expected<void> writeCurrentModeDescriptionToConfigurationFile() const;	// write the current screen resolution to the configuration file
 		util::Expected<void> readConfigurationFile();			// read preferences from configuration file
 		
 		// functions to create resources
-		util::Expected<void> createResources();					// create device resources, such as the swap chain
-		util::Expected<void> onResize();						// resize the resources
+		util::Expected<void> createResources(Direct2D* const d2d, const core::Window* const window);	// create device resources, such as the swap chain
+		
 
 		// rendering pipeline
 		util::Expected<void> initPipeline();					// initializes the (graphics) rendering pipeline
 
 		// shaders
-		util::Expected<ShaderBuffer> loadShader(std::wstring filename);	// read shader data from .cso files
-
-		// present the scene
-		void clearBuffers();									// clear the back and depth/stencil buffers
-		util::Expected<int> present();							// present the chain, by flipping the buffers
+		const util::Expected<ShaderBuffer> loadShader(const std::wstring filename) const;	// read shader data from .cso files
 
 	public:
 		// constructor
-		Direct3D(core::DirectXApp* dxApp);
+		Direct3D(core::DirectXApp* const dxApp, const core::Window* const mainWindow);
 		~Direct3D();
 
-		friend class core::DirectXApp;
+		// resize resources
+		util::Expected<void> onResize(Direct2D* const d2d);		// resize the resources
+
+		// present the scene
+		void clearBuffers();									// clear the back and depth/stencil buffers (white)
+		void clearBuffers(float[4]);							// clear the back buffer with a given colour
+		util::Expected<int> present();							// present the chain, by flipping the buffers
+
+		// getters
+		util::Expected<bool> switchFullscreen() const;			// return true iff the fullscreen state should be switched
+
+		const unsigned int getCurrentWidth() const { return currentModeDescription.Width; };
+		const unsigned int getCurrentHeight() const { return currentModeDescription.Height; };
+		const unsigned int getCurrentRefreshRateDen() const { return currentModeDescription.RefreshRate.Denominator; };
+		const unsigned int getCurrentRefreshRateNum() const { return currentModeDescription.RefreshRate.Numerator; };
+		const unsigned int getCurrentModeIndex() const { return currentModeIndex; };
+		const unsigned int getNumberOfSupportedModes() const { return numberOfSupportedModes; };
+
 		friend class Direct2D;
-		friend class DirectXGame;
-		friend class core::Window;
 	};
 }
