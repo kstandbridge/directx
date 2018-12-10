@@ -308,11 +308,11 @@ namespace graphics
 	{
 		// load Compiled Shader Object files
 #ifndef NDEBUG
-		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../x64/Debug/vertexShader.cso");
-		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../x64/Debug/pixelShader.cso");
+		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../../x64/Debug/vertexShader.cso");
+		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../../x64/Debug/pixelShader.cso");
 #else
-		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../x64/Release/vertexShader.cso");
-		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../x64/Release/pixelShader.cso");
+		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../../x64/Release/vertexShader.cso");
+		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../../x64/Release/pixelShader.cso");
 #endif
 		if (!vertexShaderBuffer.wasSuccessful() || !pixelShaderBuffer.wasSuccessful())
 			return "Critical error: Unable to read Compiled Shader Object files!";

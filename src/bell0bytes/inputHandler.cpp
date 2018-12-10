@@ -1,14 +1,20 @@
 #include "inputHandler.h"
 #include "serviceLocator.h"
+#include <array>
+#include <assert.h>
+#include "sprites.h"
 
 namespace input
 {
 	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////// Constructor //////////////////////////////////////////////
+	///////////////////// Constructors and Destructors //////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
+
+	// BindInfo
 	BindInfo::BindInfo() : keyCode(0), keyState(KeyState::JustReleased) {};
 	BindInfo::BindInfo(const unsigned int keyCode, const KeyState keyState) : keyCode(keyCode), keyState(keyState) {};
 
+	// GameCommand
 	GameCommand::GameCommand() : name(L""), chord(0) {};
 	GameCommand::GameCommand(const std::wstring& name, const unsigned int keyCode, const KeyState keyState) : name(name)
 	{
@@ -20,10 +26,30 @@ namespace input
 	};
 	GameCommand::GameCommand(const std::wstring& name, const std::vector<BindInfo>& chord) : name(name), chord(chord) {};
 	
-	InputHandler::InputHandler() 
+	// Keyboard and Mouse
+	KeyboardAndMouse::KeyboardAndMouse() : mouseX(0), mouseY(0)
 	{
-		keyboardStateCurrent.fill(0);
-		keyboardStateCurrent.fill(0);
+		this->currentState.fill(false);
+		this->previousState.fill(false);
+		this->mouseCursor = nullptr;
+	}
+
+	KeyboardAndMouse::KeyboardAndMouse(graphics::AnimatedSprite* const mouseCursor) : KeyboardAndMouse()
+	{
+		this->mouseCursor = mouseCursor;
+	}
+
+	KeyboardAndMouse::~KeyboardAndMouse()
+	{
+		if(mouseCursor)
+			delete this->mouseCursor;
+	}
+
+	// Input Handler
+	InputHandler::InputHandler() : activeKeyboard(true), activeMouse(true)
+	{
+		// initialize keyboard and mouse
+		kbm = new KeyboardAndMouse();
 
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The input handler was successfully initialized.");
 	};
@@ -40,16 +66,22 @@ namespace input
 			delete x.second;
 		activeKeyMap.clear();
 
+		delete kbm;
+		
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The input handler was shutdown successfully.");
 	}
 
+	/////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////// Initialization ////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////// Polling ///////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
 	void InputHandler::acquireInput()
 	{
-		// get keyboard state
-		getKeyboardState();
+		// get keyboard and mouse state
+		getKeyboardAndMouseState();
 
 		// update the key maps
 		update();
@@ -71,7 +103,7 @@ namespace input
 			isActive = true;
 			for(auto y : x.second->chord)
 			{
-				if (getKeyboardKeyState(y.keyCode) != y.keyState)
+				if (getKeyState(y.keyCode) != y.keyState)
 				{
 					isActive = false;
 					break;
@@ -87,30 +119,60 @@ namespace input
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////// KEYBOARD /////////////////////////////////////////////
+	///////////////////////////// Keyboard and Mouse ////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void InputHandler::getKeyboardState()
+	void InputHandler::getKeyboardAndMouseState()
 	{
 		// store the old keyboard state
-		keyboardStatePrevious = keyboardStateCurrent;
+		kbm->previousState = kbm->currentState;
 
 		// read the current keyboard state
 		for (int i = 0; i < 256; i++)
-			keyboardStateCurrent[i] = isPressed(i);
+			kbm->currentState[i] = isPressed(i);
+
+		if (activeMouse)
+		{
+			// get the position of the mouse cursor
+			POINT cursorPos;
+			GetCursorPos(&cursorPos);
+			kbm->mouseX = cursorPos.x;
+			kbm->mouseY = cursorPos.y;
+
+			// set the cursor position
+			if (kbm->mouseCursor != nullptr)
+				kbm->mouseCursor->setPosition((float)kbm->mouseX, (float)kbm->mouseY);
+		}
 	}
 
-	const KeyState InputHandler::getKeyboardKeyState(const unsigned int keyCode) const
+	const KeyState InputHandler::getKeyState(const unsigned int keyCode) const
 	{
-		if (keyboardStatePrevious[keyCode] == 1)
-			if (keyboardStateCurrent[keyCode] == 1)
+		if (kbm->previousState[keyCode] == 1)
+			if (kbm->currentState[keyCode] == 1)
 				return KeyState::StillPressed;
 			else
 				return KeyState::JustReleased;
 		else
-			if (keyboardStateCurrent[keyCode] == 1)
+			if (kbm->currentState[keyCode] == 1)
 				return KeyState::JustPressed;
 			else
 				return KeyState::StillReleased;
+	}
+
+	void InputHandler::drawMouseCursor() const
+	{
+		if(activeMouse)
+			if(kbm->mouseCursor != nullptr)
+				kbm->mouseCursor->draw();
+	}
+
+	void InputHandler::changeMouseCursorAnimationCycle(const unsigned int cycle)
+	{
+		this->kbm->mouseCursor->changeAnimation(cycle);
+	}
+
+	void InputHandler::updateMouseCursorAnimation(const double deltaTime)
+	{
+		this->kbm->mouseCursor->updateAnimation(deltaTime);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////

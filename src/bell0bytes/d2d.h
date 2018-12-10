@@ -107,13 +107,26 @@ namespace graphics
 		// draw
 		void beginDraw() const;
 		util::Expected<void> endDraw() const;
-		void fillRectangle(const float ulX, const float ulY, const float lrX, const float lrY, ID2D1Brush* const brush) const;
+
+		// draw and fill rectangles
+		void fillRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float opacity = 1.0f, ID2D1Brush* const brush = NULL) const;
+		void fillRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, const float opacity = 1.0f, ID2D1Brush* const brush = NULL) const;
 		void drawRectangle(const float ulX, const float ulY, const float lrX, const float lrY, ID2D1Brush* const brush, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
-		void fillRoundedRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float radiusX, const float radiusY, ID2D1Brush* const brush) const;
+		void drawRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, ID2D1Brush* const brush, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
+		
+		// draw and fill rounded rectangles
+		void fillRoundedRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float radiusX, const float radiusY, const float opacity = 1.0f, ID2D1Brush* const brush = NULL) const;
+		void fillRoundedRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, const float radiusX, const float radiusY, const float opacity = 1.0f, ID2D1Brush* const brush = NULL) const;
 		void drawRoundedRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float radiusX, const float radiusY, ID2D1Brush* const brush, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
-		void fillEllipse(const float centreX, const float centreY, const float radiusX, const float radiusY, ID2D1Brush* const brush) const;
+		void drawRoundedRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, const float radiusX, const float radiusY, ID2D1Brush* const brush, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
+
+		// draw and fill ellipses
+		void fillEllipse(const float centreX, const float centreY, const float radiusX, const float radiusY, const float opacity = 1.0f, ID2D1Brush* const brush = NULL) const;
 		void drawEllipse(const float centreX, const float centreY, const float radiusX, const float radiusY, ID2D1Brush* const brush, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
 
+		// print
+		void printText(const D2D1_POINT_2F& pos, IDWriteTextLayout4* const textLayout, ID2D1SolidColorBrush* const brush = NULL) const;
+		
 		// transformations
 		void setTransformation90CW() const;
 		void setTransformation180CW() const;

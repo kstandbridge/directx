@@ -29,7 +29,8 @@
 *			- 27/05/2018 - Bitmaps
 *			- 28/05/2018 - Sprites
 *			- 30/05/2018 - Animated Sprites
-*			- 04/06/2018 - Input Handler
+*			- 04/06/2018 - Input Handler + Keyboard
+*			- 10/06/2018 - Mice
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -44,13 +45,15 @@
 // bell0bytes input
 #include "inputHandler.h"
 
+// bell0bytes graphics
+#include "sprites.h"
 
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
 
 // define game commands
 namespace input
 {
-	enum GameCommands { Quit, showFPS };
+	enum GameCommands { Quit, ShowFPS };
 }
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
@@ -73,7 +76,9 @@ public:
 class DirectXGame : core::DirectXApp
 {
 private:
-	
+	// initialize mouse cursor sprite
+	util::Expected<void> createMouseCursor();
+
 public:
 	// constructor and destructor
 	DirectXGame(HINSTANCE hInstance);
@@ -155,14 +160,21 @@ util::Expected<void> DirectXGame::init(LPCWSTR windowTitle)
 	if (!applicationInitialization.wasSuccessful())
 		return applicationInitialization;
 
+	// initialize the input handler
+	try { inputHandler = new GameInput(); }
+	catch (...) { return std::runtime_error("Critical error: Unable to create the input handler!"); }
+
 	// initialize game graphics
 	applicationInitialization = initGraphics();
 	if(!applicationInitialization.wasSuccessful())
 		return applicationInitialization;
 
-	// initialize the input handler
-	inputHandler = new GameInput();
+	// position mouse at the center of the screen
+	SetCursorPos(d3d->getCurrentWidth() / 2, d3d->getCurrentHeight() / 2);
 
+	// hide the standard cursor
+	ShowCursor(false);
+		
 	// log and return success
 	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Game initialization was successful.");
 	return {};
@@ -171,6 +183,10 @@ util::Expected<void> DirectXGame::init(LPCWSTR windowTitle)
 // initialize graphics
 util::Expected<void> DirectXGame::initGraphics()
 {	
+	// create mouse cursor sprite
+	if (!createMouseCursor().wasSuccessful())
+		return std::runtime_error("Critical error: unable to create mouse cursor sprite!");
+
 	// log and return success
 	util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Game graphics were successfully initialized.");
 	return {};
@@ -255,20 +271,24 @@ DirectXGame::~DirectXGame()
 /////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// Input Handler ////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
-GameInput::GameInput()
+GameInput::GameInput() : input::InputHandler()
 {
+	// set default key mappings
 	setDefaultKeyMap();
 }
 
 void GameInput::setDefaultKeyMap()
 {
 	keyMap.clear();
+
 	std::vector<input::BindInfo> bi;
 	bi.push_back(input::BindInfo(VK_SHIFT, input::KeyState::StillPressed));
 	bi.push_back(input::BindInfo(VK_CONTROL, input::KeyState::StillPressed));
 	bi.push_back(input::BindInfo('F', input::KeyState::JustPressed));
+
+	keyMap[input::GameCommands::ShowFPS] = new input::GameCommand(L"Show FPS", bi);
 	keyMap[input::GameCommands::Quit] = new input::GameCommand(L"Quit", VK_ESCAPE, input::KeyState::JustPressed);
-	keyMap[input::GameCommands::showFPS] = new input::GameCommand(L"showFPS", bi);
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -287,15 +307,18 @@ void DirectXGame::acquireInput()
 			PostMessage(appWindow->getMainWindowHandle(), WM_CLOSE, 0, 0);
 			break;
 
-		case input::GameCommands::showFPS:
+		case input::GameCommands::ShowFPS:
 			showFPS = !showFPS;
 			break;
 		}
 	}
 }
 
-util::Expected<int> DirectXGame::update(const double /*deltaTime*/)
+util::Expected<int> DirectXGame::update(const double deltaTime)
 {	
+	// update the mouse cursor
+	inputHandler->updateMouseCursorAnimation(deltaTime);
+
 	// update the game world
 
 	// return success
@@ -318,9 +341,12 @@ util::Expected<int> DirectXGame::render(const double /*farSeer*/)
 	// print FPS information
 	d2d->printFPS();
 
+	// draw cursor
+	inputHandler->drawMouseCursor();
+
 	if(!d2d->endDraw().wasSuccessful())
 		return std::runtime_error("Failed to draw 2D graphics!");
-	
+
 	////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Direct3D /////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////
@@ -331,4 +357,51 @@ util::Expected<int> DirectXGame::render(const double /*farSeer*/)
 
 	// return success
 	return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// Mouse Cursor //////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////
+util::Expected<void> DirectXGame::createMouseCursor()
+{
+	// set cursor animation data
+	std::vector<graphics::AnimationCycleData> cursorAnimationsCycles;
+	graphics::AnimationCycleData cycle;
+	graphics::AnimationData* cursorAnimations;
+
+	// cursor cycle
+	cycle.name = L"Cursor Normal";
+	cycle.startFrame = 0;
+	cycle.numberOfFrames = 1;
+	cycle.width = 15;
+	cycle.height = 16;
+	cycle.paddingWidth = 0;
+	cycle.paddingHeight = 3;
+	cycle.borderPaddingHeight = cycle.borderPaddingWidth = 1;
+	cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+	cursorAnimationsCycles.push_back(cycle);
+
+	cycle.name = L"Cursor Click";
+	cycle.startFrame = 0;
+	cycle.numberOfFrames = 1;
+	cycle.width = 15;
+	cycle.height = 16;
+	cycle.paddingWidth = 0;
+	cycle.paddingHeight = 0;
+	cycle.borderPaddingHeight = cycle.borderPaddingWidth = 1;
+	cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+	cursorAnimationsCycles.push_back(cycle);
+
+	// create cursor animations
+	try { cursorAnimations = new graphics::AnimationData(d2d, L"Art/cursor.png", cursorAnimationsCycles); }
+	catch (std::runtime_error& e) { return e; }
+
+	// create cursor sprite
+	inputHandler->setMouseCursor(new graphics::AnimatedSprite(d2d, cursorAnimations, 0, 24, 0, 0));
+
+	cursorAnimationsCycles.clear();
+	std::vector<graphics::AnimationCycleData>(cursorAnimationsCycles).swap(cursorAnimationsCycles);
+
+	// return success
+	return { };
 }

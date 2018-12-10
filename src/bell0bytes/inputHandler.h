@@ -7,6 +7,7 @@
 * Desc:		Event based input handler
 *
 * History:	- 05/06/2018: added keyboard support
+*			- 11/06/2018: added mouse support
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -17,15 +18,16 @@
 // c++ containers
 #include <unordered_map>
 #include <array>
-#include <vector>
-
-// c++ strings
-#include <iostream>
 
 // bell0bytes utilities
 #include "expected.h"
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
+namespace graphics
+{
+	class AnimatedSprite;
+}
+
 namespace input
 {
 	// enumerate all game commands
@@ -69,26 +71,49 @@ namespace input
 		friend class InputHandler;
 	};
 
+	// the keyboard and mouse class
+	class KeyboardAndMouse
+	{
+	private:
+		std::array<bool, 256> currentState;					// the state of the keyboard keys and mouse buttons in the current frame
+		std::array<bool, 256> previousState;				// the state of the keyboard keys and mouse buttons in the previous frame
+
+		graphics::AnimatedSprite* mouseCursor;				// the sprite of the mouse cursor
+		long mouseX, mouseY;								// the position of the mouse cursor
+
+	public:
+		KeyboardAndMouse();
+		KeyboardAndMouse(graphics::AnimatedSprite* const mouseCursor);
+		~KeyboardAndMouse();
+		
+		friend class InputHandler;
+	};
+
 	// the main input handler class
 	class InputHandler
 	{
 	private:
 		/////////////////////////////////////////////////////////////////////////////////////////
-		////////////////////////////////// KEYBOARD /////////////////////////////////////////////
+		////////////////////////////////// GENERAL //////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
-		std::array<BYTE, 256> keyboardStateCurrent;					// the state of the keyboard in the current frame 
-		std::array<BYTE, 256> keyboardStatePrevious;				// the state of the keyboard in the previous frame
-				
-		void getKeyboardState();									// gets the keyboard state, uses GetAsyncKeyState to read the state of all 256 keys
-		const KeyState getKeyboardKeyState(const unsigned int keyCode) const;// gets the state of the specified key, depending on its state in the previous and the current frame
-
-		inline const bool isPressed(int keyCode) const { return (GetAsyncKeyState(keyCode) & 0x8000) ? 1 : 0; };	// returns true iff the key is down
+		bool activeKeyboard;										// true iff keyboard input is active
+		bool activeMouse;											// true iff mouse input is active
 
 		// polling
 		void update();												// update the active key map
+		
+		/////////////////////////////////////////////////////////////////////////////////////////
+		///////////////////////////// KEYBOARD AND MOUSE ////////////////////////////////////////
+		/////////////////////////////////////////////////////////////////////////////////////////
+		KeyboardAndMouse* kbm;										// pointer to keyboard and mouse class							
+		
+		void getKeyboardAndMouseState();									// gets the keyboard and mouse button state, uses GetAsyncKeyState to read the state of all 256 keys
+		const KeyState getKeyState(const unsigned int keyCode) const;		// gets the state of the specified key, depending on its state in the previous and the current frame
+		inline const bool isPressed(int keyCode) const { return (GetAsyncKeyState(keyCode) & 0x8000) ? 1 : 0; };	// returns true iff the key is down
+		
 	protected:
 		std::unordered_map<GameCommands, GameCommand*> keyMap;		// list of all possible game commands mapped to the appropriate command structure
-			
+		
 		// constructor and destructor
 		InputHandler();
 		~InputHandler();
@@ -100,9 +125,19 @@ namespace input
 		util::Expected<std::wstring> getKeyName(const unsigned int keyCode);// retrieves the name of a virtual key code
 
 	public:
+		/////////////////////////////////////////////////////////////////////////////////////////
+		////////////////////////////////// GENERAL //////////////////////////////////////////////
+		/////////////////////////////////////////////////////////////////////////////////////////
 		std::unordered_map<GameCommands, GameCommand*> activeKeyMap;// list of all active key maps; game acts on each command in this list
 
-		// acquire input
-		void acquireInput();
+		void acquireInput();										// reads the state of the game controllers
+		
+		/////////////////////////////////////////////////////////////////////////////////////////
+		///////////////////////////// KEYBOARD AND MOUSE ////////////////////////////////////////
+		/////////////////////////////////////////////////////////////////////////////////////////
+		void drawMouseCursor() const;								// draws the mouse cursor
+		void setMouseCursor(graphics::AnimatedSprite* const mouseCursor) { this->kbm->mouseCursor = mouseCursor; };
+		void changeMouseCursorAnimationCycle(const unsigned int cycle);	
+		void updateMouseCursorAnimation(const double deltaTime);
 	};
 }

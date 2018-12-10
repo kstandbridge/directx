@@ -269,14 +269,55 @@ namespace graphics
 		// return success
 		return { };
 	}
+
+	// print text
+	void Direct2D::printText(const D2D1_POINT_2F& pos, IDWriteTextLayout4* const textLayout, ID2D1SolidColorBrush* const brush) const
+	{
+		if (brush)
+			devCon->DrawTextLayout(pos, textLayout, brush);
+		else
+			devCon->DrawTextLayout(pos, textLayout, blackBrush.Get());
+	}
 	
-	void Direct2D::fillRectangle(const float ulX, const float ulY, const float lrX, const float lrY, ID2D1Brush* const brush) const
+	// draw and fill rectangles
+	void Direct2D::fillRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float opacity, ID2D1Brush* const brush) const
 	{
 		D2D1_RECT_F rect = { ulX, ulY, lrX, lrY };
 		if (brush)
+		{
+			brush->SetOpacity(opacity);
 			devCon->FillRectangle(&rect, brush);
+		}
 		else
+		{
+			if(opacity != 1.0f)
+				blackBrush->SetOpacity(opacity);
+		
 			devCon->FillRectangle(&rect, blackBrush.Get());
+			
+			if(opacity != 1.0f)
+				blackBrush->SetOpacity(1.0f);
+		}
+	}
+
+	void Direct2D::fillRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, const float opacity, ID2D1Brush* const brush) const
+	{
+		D2D1_RECT_F rect = { upperLeft.x , upperLeft.y , lowerRight.x , lowerRight.y };
+		if (brush)
+		{
+			brush->SetOpacity(opacity);
+			devCon->FillRectangle(&rect, brush);
+		}
+		else
+		{
+			if (opacity != 1.0f)
+				blackBrush->SetOpacity(opacity);
+
+			devCon->FillRectangle(&rect, blackBrush.Get());
+
+			if (opacity != 1.0f)
+				blackBrush->SetOpacity(1.0f);
+		}
 	}
 
 	void Direct2D::drawRectangle(const float ulX, const float ulY, const float lrX, const float lrY, ID2D1Brush* const brush, const float width, ID2D1StrokeStyle1* const strokeStyle) const
@@ -288,13 +329,55 @@ namespace graphics
 			devCon->DrawRectangle(&rect, blackBrush.Get(), width, strokeStyle);
 	}
 
-	void Direct2D::fillRoundedRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float radiusX, const float radiusY, ID2D1Brush* const brush) const
+	void Direct2D::drawRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, ID2D1Brush* const brush, const float width, ID2D1StrokeStyle1* const strokeStyle) const
+	{
+		D2D1_RECT_F rect = { upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y };
+		if (brush)
+			devCon->DrawRectangle(&rect, brush, width, strokeStyle);
+		else
+			devCon->DrawRectangle(&rect, blackBrush.Get(), width, strokeStyle);
+	}
+
+	// fill and draw rounded rectangles
+	void Direct2D::fillRoundedRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float radiusX, const float radiusY, const float opacity, ID2D1Brush* const brush) const
 	{
 		D2D1_RECT_F rect = { ulX, ulY, lrX, lrY };
-		if(brush)
+		if (brush)
+		{
+			brush->SetOpacity(opacity);
 			devCon->FillRoundedRectangle(D2D1::RoundedRect(rect, radiusX, radiusY), brush);
+		}
 		else
+		{
+			if (opacity != 1.0f)
+				blackBrush->SetOpacity(opacity);
+			
 			devCon->FillRoundedRectangle(D2D1::RoundedRect(rect, radiusX, radiusY), blackBrush.Get());
+			
+			if (opacity != 1.0f)
+				blackBrush->SetOpacity(1.0f);
+		}
+	}
+
+	void Direct2D::fillRoundedRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, const float radiusX, const float radiusY, const float opacity, ID2D1Brush* const brush) const
+	{
+		D2D1_RECT_F rect = { upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y };
+
+		if (brush)
+		{
+			brush->SetOpacity(opacity);
+			devCon->FillRoundedRectangle(D2D1::RoundedRect(rect, radiusX, radiusY), brush);
+		}
+		else
+		{
+			if (opacity != 1.0f)
+				blackBrush->SetOpacity(opacity);
+
+			devCon->FillRoundedRectangle(D2D1::RoundedRect(rect, radiusX, radiusY), blackBrush.Get());
+
+			if (opacity != 1.0f)
+				blackBrush->SetOpacity(opacity);
+		}
 	}
 
 	void Direct2D::drawRoundedRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float radiusX, const float radiusY, ID2D1Brush* const brush, const float width, ID2D1StrokeStyle1* const strokeStyle) const
@@ -306,12 +389,32 @@ namespace graphics
 			devCon->DrawRoundedRectangle(D2D1::RoundedRect(rect, radiusX, radiusY), blackBrush.Get(), width, strokeStyle);
 	}
 
-	void Direct2D::fillEllipse(const float centreX, const float centreY, const float radiusX, const float radiusY, ID2D1Brush* const brush) const
+	void Direct2D::drawRoundedRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, const float radiusX, const float radiusY, ID2D1Brush* const brush, const float width, ID2D1StrokeStyle1* const strokeStyle) const
 	{
-		if(brush)
-			devCon->FillEllipse(D2D1::Ellipse(D2D1::Point2F(centreX, centreY), radiusX, radiusY), brush);
+		D2D1_RECT_F rect = { upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y };
+		if (brush)
+			devCon->DrawRoundedRectangle(D2D1::RoundedRect(rect, radiusX, radiusY), brush, width, strokeStyle);
 		else
+			devCon->DrawRoundedRectangle(D2D1::RoundedRect(rect, radiusX, radiusY), blackBrush.Get(), width, strokeStyle);
+	}
+
+	// fill and draw ellipses
+	void Direct2D::fillEllipse(const float centreX, const float centreY, const float radiusX, const float radiusY, const float opacity, ID2D1Brush* const brush) const
+	{
+		if (brush)
+		{	
+			brush->SetOpacity(opacity);
+			devCon->FillEllipse(D2D1::Ellipse(D2D1::Point2F(centreX, centreY), radiusX, radiusY), brush);
+		}
+		else
+		{	
+			if (opacity != 1.0f)
+				blackBrush->SetOpacity(opacity);
 			devCon->FillEllipse(D2D1::Ellipse(D2D1::Point2F(centreX, centreY), radiusX, radiusY), blackBrush.Get());
+
+			if (opacity != 1.0f)
+				blackBrush->SetOpacity(1.0f);
+		}
 	}
 
 	void Direct2D::drawEllipse(const float centreX, const float centreY, const float radiusX, const float radiusY, ID2D1Brush* const brush, const float width, ID2D1StrokeStyle1* const strokeStyle) const

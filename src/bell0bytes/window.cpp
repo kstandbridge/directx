@@ -154,15 +154,15 @@ namespace core
 				return -1;
 
 			// display a message box and ask the user for confirmation
-			if (MessageBox(mainWindow, L"Are you sure you want to quit? Cosmo will miss you!", L"Cosmo is sad!", MB_YESNO | MB_ICONQUESTION) == IDYES)
-				return DefWindowProc(mainWindow, msg, wParam, lParam);
-			else
-			{
-				// unpause the game
-				if (!notify(input::Events::ResumeApplication).wasSuccessful())
-					return -1;
-				return 0;
-			}
+			//if (MessageBox(mainWindow, L"Are you sure you want to quit? Cosmo will miss you!", L"Cosmo is sad!", MB_YESNO | MB_ICONQUESTION) == IDYES)
+			return DefWindowProc(mainWindow, msg, wParam, lParam);
+			//else
+			//{
+			//	// unpause the game
+			//	if (!notify(input::Events::ResumeApplication).wasSuccessful())
+			//		return -1;
+			//	return 0;
+			//}
 
 		case WM_MENUCHAR:
 			// very important for your mental health: disables the crazy beeping sound when pressing a mnemonic key

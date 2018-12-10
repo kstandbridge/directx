@@ -41,10 +41,6 @@ namespace core
 		const double dt;						// constant game update rate
 		const double maxSkipFrames;				// constant maximum of frames to skip in the update loop (important to not stall the system on slower computers)
 		
-		// application window
-		const HINSTANCE appInstance;			// handle to an instance of the application
-		
-
 		// timer
 		Timer* timer;							// high-precision timer
 
@@ -84,8 +80,8 @@ namespace core
 		util::Expected<void> checkFullscreen();
 
 	protected:
-		// application window
 		const Window* appWindow;				// the application window (i.e. game window)
+		const HINSTANCE appInstance;			// handle to an instance of the application
 
 		// DirectX Graphics
 		graphics::Direct3D* d3d;				// pointer to the Direct3D class

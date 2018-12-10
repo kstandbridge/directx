@@ -56,6 +56,9 @@ namespace graphics
 		// drawing
 		void draw(const D2D1_RECT_F* const destRect, const D2D1_RECT_F* const sourceRect, const float opacity = 1.0f, const D2D1_BITMAP_INTERPOLATION_MODE interPol = D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR) const;		// draws the sprite at the given location, with the given opacity and interpolation mode
 		
+		// getters and setters
+		void setPosition(float posX, float posY);			// sets the position of the sprite to the location specified by posX and posY
+
 		// friends
 		friend class SpriteMap;
 		friend class AnimatedSprite;
