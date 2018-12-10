@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="app.h" />
+    <ClInclude Include="buttons.h" />
     <ClInclude Include="d2d.h" />
     <ClInclude Include="d3d.h" />
     <ClInclude Include="expected.h" />
@@ -164,6 +165,7 @@
   <ItemGroup>
     <ClCompile Include="app.cpp" />
     <ClCompile Include="bell0tutorial.cpp" />
+    <ClCompile Include="buttons.cpp" />
     <ClCompile Include="d2d.cpp" />
     <ClCompile Include="d3d.cpp" />
     <ClCompile Include="gameMenuState.cpp" />
@@ -184,6 +186,12 @@
     <ResourceCompile Include="bell0tutorial.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="Art\Boost.png" />
+    <Image Include="Art\cursor.png" />
+    <Image Include="Art\dx.png" />
+    <Image Include="Art\optionsButton.png" />
+    <Image Include="Art\playButton.png" />
+    <Image Include="Art\quitButton.png" />
     <Image Include="Art\wolfAnimations.png" />
     <Image Include="Resources\Icons\barkingDog.ico" />
   </ItemGroup>
@@ -203,6 +211,10 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <Xml Include="Art\cursor.xml" />
+    <Xml Include="Art\optionsButton.xml" />
+    <Xml Include="Art\playButton.xml" />
+    <Xml Include="Art\quitButton.xml" />
     <Xml Include="Art\wolfAnimations.xml" />
   </ItemGroup>
   <ItemGroup>

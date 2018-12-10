@@ -35,6 +35,7 @@ namespace core
 		graphics::Direct2D* const d2d;			// pointer to the Direct2D object of the DirectXApp
 
 		bool isPaused;							// true iff the scene is paused
+		bool firstCreation;						// true iff this is the first time the singleton is created
 
 		// protected constructor -> singleton
 		GameState(DirectXApp* const app, std::wstring& name);
@@ -47,19 +48,19 @@ namespace core
 		GameState& operator = (GameState const &) = delete;
 		
 		// initialization
-		virtual void initialize() = 0;
-		virtual void shutdown() = 0;
+		virtual util::Expected<void> initialize() = 0;
+		virtual util::Expected<void> shutdown() = 0;
 
 		// pause and resume
-		virtual void pause() = 0;
-		virtual void resume() = 0;
+		virtual util::Expected<void> pause() = 0;
+		virtual util::Expected<void> resume() = 0;
 
 		// user input
-		virtual bool handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) = 0;	// returns false if the observer stack of the input handler was changed
-		virtual void update(const double deltaTime) = 0;
+		virtual util::Expected<bool> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) = 0;	// returns false if the observer stack of the input handler was changed
+		virtual util::Expected<void> update(const double deltaTime) = 0;
 
 		// render the scene
-		virtual void render(const double farSeer) = 0;
+		virtual util::Expected<void> render(const double farSeer) = 0;
 
 		// change to another scene
 		void changeState(GameState* const gameState);

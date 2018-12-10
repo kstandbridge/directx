@@ -238,7 +238,7 @@ namespace input
 		{
 			ia >> gcs;
 			ia >> gameCommand;
-			keyMap[gcs] = gameCommand;
+			keyMap.insert(std::pair<GameCommands, GameCommand*>(gcs, gameCommand));
 		}
 
 		gameCommand = nullptr;

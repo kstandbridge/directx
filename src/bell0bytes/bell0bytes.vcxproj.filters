@@ -78,6 +78,9 @@
     <ClInclude Include="gameCommands.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="buttons.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp">
@@ -131,6 +134,9 @@
     <ClCompile Include="gameMenuState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="buttons.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="bell0tutorial.rc">
@@ -144,6 +150,24 @@
     <Image Include="Art\wolfAnimations.png">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="Art\Boost.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\cursor.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\dx.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\optionsButton.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\playButton.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\quitButton.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="pixelShader.hlsl" />
@@ -151,6 +175,10 @@
   </ItemGroup>
   <ItemGroup>
     <Xml Include="Art\wolfAnimations.xml" />
+    <Xml Include="Art\cursor.xml" />
+    <Xml Include="Art\optionsButton.xml" />
+    <Xml Include="Art\playButton.xml" />
+    <Xml Include="Art\quitButton.xml" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -33,13 +33,17 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Initialization //////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void GameMenuState::initialize()
+	util::Expected<void> GameMenuState::initialize()
 	{
+		// handle errors
+		util::Expected<void> result;
+
 		// add to observer list of the input handler
 		dxApp->addInputHandlerObserver(this);
 
 		// position mouse at the center of the screen
-		SetCursorPos(dxApp->getCurrentWidth() / 2, dxApp->getCurrentHeight() / 2);
+		if (!SetCursorPos(dxApp->getCurrentWidth() / 2, dxApp->getCurrentHeight() / 2))
+			return std::runtime_error("Critical error: Unable to set cursor position!");
 
 		// hide the standard cursor
 		ShowCursor(false);
@@ -49,28 +53,41 @@ namespace UI
 		dxApp->activeKeyboard = true;
 
 		// create text formats
-		d2d->createTextFormat(L"Segoe UI", 72.0f, gameMenuFormat);
+		result = d2d->createTextFormat(L"Segoe UI", 72.0f, gameMenuFormat);
+		if (!result.isValid())
+			return result;
 
 		// create text layouts
 		std::wstring menu = L"Game Menu on top of the Game Scene";
-		d2d->createTextLayoutFromWString(&menu, gameMenuFormat.Get(), (float)dxApp->getCurrentWidth(), 100, gameMenuLayout);
+		result = d2d->createTextLayoutFromWString(&menu, gameMenuFormat.Get(), (float)dxApp->getCurrentWidth(), 100, gameMenuLayout);
+		if (!result.wasSuccessful())
+			return result;
+
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Pause and Resume //////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void GameMenuState::pause()
+	util::Expected<void> GameMenuState::pause()
 	{
 		isPaused = true;
+
+		// return success
+		return { };
 	}
 
-	void GameMenuState::resume()
+	util::Expected<void> GameMenuState::resume()
 	{
 		// allow mouse and keyboard input
 		dxApp->activeMouse = true;
 		dxApp->activeKeyboard = true;
 
 		isPaused = false;
+
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -85,14 +102,17 @@ namespace UI
 		return true;
 	}
 
-	bool GameMenuState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
+	util::Expected<bool> GameMenuState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
 	{
+		if (isPaused)
+			return true;
+
 		// act on user input
 		for (auto x : activeKeyMap)
 		{
 			switch (x.first)
 			{
-			case input::Start:
+			case input::Select:
 				// create game play state
 				if (!dxApp->gameIsRunning)
 					dxApp->changeGameState(&core::PlayState::createInstance(dxApp, L"Game"));
@@ -116,28 +136,35 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////// Update /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void GameMenuState::update(const double /*deltaTime*/)
+	util::Expected<void> GameMenuState::update(const double /*deltaTime*/)
 	{
-
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Render //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void GameMenuState::render(const double /*farSeer*/)
+	util::Expected<void> GameMenuState::render(const double /*farSeer*/)
 	{
 		d2d->printCenteredText(gameMenuLayout.Get(), -400, -250);
 
 		// print FPS information
 		d2d->printFPS();
+
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Shutdown ////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void GameMenuState::shutdown()
+	util::Expected<void> GameMenuState::shutdown()
 	{
 		// remove from the observer list
 		dxApp->removeInputHandlerObserver(this);
+
+		// return success
+		return { };
 	}
 }

@@ -52,7 +52,7 @@ namespace graphics
 		// constructors and destructors
 		Sprite(Direct2D* const d2d, ID2D1Bitmap1* const bitmap, const float x = 0.0f, const float y = 0.0f, const Layers layer = Layers::Characters, const unsigned int drawOrder = 0);		// create a sprite from an existing bitmap
 		Sprite(Direct2D* const d2d, LPCWSTR imageFile, const float x = 0.0f, const float y = 0.0f, const Layers layer = Layers::Characters, const unsigned int drawOrder = 0);	// loads an image from the disk and saves it as a sprite
-		~Sprite();
+		virtual ~Sprite();
 
 		// drawing
 		D2D1_RECT_F getCenteredRectangle(const float scaleFactor) const;	// returns a destination rectangle with the sprite at the center of the screen (scaled by scaleFactor)
@@ -94,7 +94,7 @@ namespace graphics
 
 	public:
 		AnimationData(Direct2D* const d2d, LPCWSTR spriteSheetFile, const std::vector<AnimationCycleData>& frameData);
-		~AnimationData();
+		virtual ~AnimationData();
 
 		friend class AnimatedSprite;
 	};
@@ -115,6 +115,7 @@ namespace graphics
 
 		// drawing
 		void draw() const;										// the draw functions computes the source and destination rectangle and then calls on the Sprite::draw method to actually draw the AnimatedSprite
+		void drawCentered(const float scaleFactor = 1.0f, const float offsetX = 0.0f, const float offsetY = 0.0f, D2D1_RECT_F* const rect = NULL) const;
 
 		// update and change
 		void updateAnimation(const double deltaTime);					// updates the currently active animation cycle based on the passed time

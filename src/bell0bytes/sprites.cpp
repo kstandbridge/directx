@@ -40,7 +40,8 @@ namespace graphics
 	Sprite::~Sprite()
 	{
 		// release bitmap
-		this->bitmap.ReleaseAndGetAddressOf();
+		if(this->bitmap.Get() != nullptr)
+			this->bitmap.ReleaseAndGetAddressOf();
 	}
 
 	SpriteMap::~SpriteMap()
@@ -60,12 +61,15 @@ namespace graphics
 		std::vector<AnimationCycleData>(cyclesData).swap(cyclesData);
 
 		// release the sprite sheet, to be sure
-		spriteSheet.ReleaseAndGetAddressOf();
+		//spriteSheet.ReleaseAndGetAddressOf();
 	}
 
 	AnimatedSprite::~AnimatedSprite()
 	{
-		delete animationData;// = nullptr;
+		Sprite::~Sprite();
+
+		if(animationData)
+			delete animationData;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -171,6 +175,46 @@ namespace graphics
 								this->y-(cycleData.height*cycleData.rotationCenterY), 
 								this->x+(cycleData.width*(1.0f-cycleData.rotationCenterX)),
 								this->y+(cycleData.height*(1.0f-cycleData.rotationCenterY))};
+
+		// compute the coordinates of the upper left corner of the source rectangle
+		// upper left x of the i-th sprite: border padding plus i-times the combined width of each image and padding between images
+		// upper left y of the i-th sprite: border padding plus the combined heights of each image and padding between images in the previous cycles
+		float startX = frame * (cycleData.width + cycleData.paddingWidth) + cycleData.borderPaddingWidth;
+		float startY = 0;
+		for (unsigned int i = 0; i < cycle; i++)
+			startY += (animationData->cyclesData[i].height + animationData->cyclesData[i].paddingHeight);
+		startY += animationData->cyclesData[0].borderPaddingHeight;
+
+		// create the source rectangle
+		// obviously to get the lower right coordinates, we simply have to add the width and height respectively
+		D2D1_RECT_F sourceRect = { startX, startY, startX + cycleData.width, startY + cycleData.height };
+
+		Sprite::draw(&destRect, &sourceRect);
+	}
+
+	void AnimatedSprite::drawCentered(const float scaleFactor, const float offsetX, const float offsetY, D2D1_RECT_F* const rect) const
+	{
+		unsigned int cycle = this->activeAnimation;
+		unsigned int frame = this->activeAnimationFrame;
+		AnimationCycleData cycleData = animationData->cyclesData[cycle];
+
+		// get screen center
+		float centerX = d2d->getCurrentWidth() / 2.0f;
+		float centerY = d2d->getCurrentHeight() / 2.0f;
+
+		// compute the destination rectangle, make sure to put the rotation centre at the desired position
+		// upper left x: centerX + offsetX + width * rotationCenterX * scaleFactor
+		// upper left y: centerY + offsetY + height * rotationCenterY * scaleFactor
+		// lower right x: centerX + offsetX + width * (1-rotationCenterX) * scaleFactor
+		// lower right y: centerY + offsetY + height * (1-rotationCenterY) * scaleFactor
+
+		D2D1_RECT_F destRect = { offsetX + centerX - (cycleData.width*cycleData.rotationCenterX * scaleFactor),
+			offsetY + centerY - (cycleData.height*cycleData.rotationCenterY * scaleFactor),
+			offsetX + centerX + (cycleData.width*(1.0f - cycleData.rotationCenterX) * scaleFactor),
+			offsetY + centerY + (cycleData.height*(1.0f - cycleData.rotationCenterY) * scaleFactor) };
+
+		if (rect != NULL)
+			*rect = destRect;
 
 		// compute the coordinates of the upper left corner of the source rectangle
 		// upper left x of the i-th sprite: border padding plus i-times the combined width of each image and padding between images

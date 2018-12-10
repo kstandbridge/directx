@@ -70,18 +70,18 @@ namespace UI
 		util::Expected<bool> onNotify(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
 
 		// initialization
-		virtual void initialize() override;
-		virtual void shutdown() override;
+		virtual util::Expected<void> initialize() override;
+		virtual util::Expected<void> shutdown() override;
 
 		// pause and resume
-		virtual void pause() override;
-		virtual void resume() override;
+		virtual util::Expected<void> pause() override;
+		virtual util::Expected<void> resume() override;
 
 		// user input
-		virtual bool handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
-		virtual void update(const double deltaTime) override;
+		virtual util::Expected<bool> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
+		virtual util::Expected<void> update(const double deltaTime) override;
 
 		// render the scene
-		virtual void render(const double farSeer) override;
+		virtual util::Expected<void> render(const double farSeer) override;
 	};
 }

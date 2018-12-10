@@ -10,7 +10,7 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	GameState::GameState(DirectXApp* const app, std::wstring& name) : dxApp(app), name(name), d2d(dxApp->getDirect2D()), isPaused(false)
+	GameState::GameState(DirectXApp* const app, std::wstring& name) : dxApp(app), name(name), d2d(dxApp->getDirect2D()), isPaused(false), firstCreation(true)
 	{
 
 	}

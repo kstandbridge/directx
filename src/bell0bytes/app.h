@@ -172,5 +172,9 @@ namespace core
 		// booleans
 		bool showFramesPerSecond() const { return showFPS; };
 		bool gameHasStarted() const { return hasStarted; };
+
+		// mouse position
+		long getMouseX() const;
+		long getMouseY() const;
 	};
 }

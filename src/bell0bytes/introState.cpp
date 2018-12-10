@@ -15,7 +15,7 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	IntroState::IntroState(core::DirectXApp* const app, std::wstring name) : GameState(app, name), frameTime(0.0f), secondsPerLogo(5.0f), showContinueText(true), showTradeMarkLogos(false)
+	IntroState::IntroState(core::DirectXApp* const app, std::wstring name) : GameState(app, name), frameTime(0.0f), secondsPerLogo(1.0f), showContinueText(true), showTradeMarkLogos(false)
 	{
 
 	}
@@ -34,8 +34,11 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Initialization //////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void IntroState::initialize()
+	util::Expected<void> IntroState::initialize()
 	{
+		// handle errors
+		util::Expected<void> result;
+
 		// add to observer list of the input handler
 		dxApp->addInputHandlerObserver(this);
 
@@ -50,11 +53,25 @@ namespace UI
 		//dxApp->showFPS = false;
 
 		// create text formats
-		d2d->createTextFormat(L"Lucida Handwriting", 72.0f, companyNameFormat);
-		d2d->createTextFormat(L"Segoe UI", 36.0f, authorNameFormat);
-		d2d->createTextFormat(L"Segoe UI", 24.0f, continueFormat);
-		d2d->createTextFormat(L"Segoe UI", 12.0f, trademarkCountdownFormat);
-		d2d->createTextFormat(L"Segoe UI", 18.0f, trademarkFormat);
+		result = d2d->createTextFormat(L"Lucida Handwriting", 72.0f, companyNameFormat);
+		if (!result.isValid())
+			return result;
+		
+		result = d2d->createTextFormat(L"Segoe UI", 36.0f, authorNameFormat);
+		if (!result.isValid())
+			return result;
+		
+		result = d2d->createTextFormat(L"Segoe UI", 24.0f, continueFormat);
+		if (!result.isValid())
+			return result;
+		
+		result = d2d->createTextFormat(L"Segoe UI", 12.0f, trademarkCountdownFormat);
+		if (!result.isValid())
+			return result;
+		
+		result = d2d->createTextFormat(L"Segoe UI", 18.0f, trademarkFormat);
+		if (!result.isValid())
+			return result;
 
 		// create text layouts
 		std::wstring bell0bytes = L"bell0bytes presents";
@@ -65,38 +82,58 @@ namespace UI
 		trademarkText << "DirectX 11 " << (wchar_t)0xA9 << " Microsoft 2018" << std::endl;
 		trademarkText << "Boost, distributed under the Boost Software License, Version 1.0." << std::endl;
 
-		d2d->createTextLayoutFromWString(&bell0bytes, companyNameFormat.Get(), (float)dxApp->getCurrentWidth(), 100, companyNameLayout);
-		d2d->createTextLayoutFromWString(&bell0, authorNameFormat.Get(), (float)dxApp->getCurrentWidth(), 100, authorNameLayout);
-		d2d->createTextLayoutFromWString(&continueText, continueFormat.Get(), (float)dxApp->getCurrentWidth(), 100, continueLayout);
-		d2d->createTextLayoutFromWStringStream(&trademarkText, trademarkFormat.Get(), (float)dxApp->getCurrentWidth(), 100, trademarkLayout);
+		result = d2d->createTextLayoutFromWString(&bell0bytes, companyNameFormat.Get(), (float)dxApp->getCurrentWidth(), 100, companyNameLayout);
+		if (!result.isValid())
+			return result;
+
+		result = d2d->createTextLayoutFromWString(&bell0, authorNameFormat.Get(), (float)dxApp->getCurrentWidth(), 100, authorNameLayout);
+		if (!result.isValid())
+			return result;
+		
+		result = d2d->createTextLayoutFromWString(&continueText, continueFormat.Get(), (float)dxApp->getCurrentWidth(), 100, continueLayout);
+		if (!result.isValid())
+			return result; 
+		
+		result = d2d->createTextLayoutFromWStringStream(&trademarkText, trademarkFormat.Get(), (float)dxApp->getCurrentWidth(), 100, trademarkLayout);
+		if (!result.isValid())
+			return result;
 
 		std::wostringstream trademarkCountdownText;
 		trademarkCountdownText.precision(1);
 		trademarkCountdownText << "The game will continue in: " << this->secondsPerLogo << " s." << std::endl;
-		d2d->createTextLayoutFromWStringStream(&trademarkCountdownText, trademarkCountdownFormat.Get(), (float)dxApp->getCurrentWidth(), 100, trademarkCountdownLayout);
+		result = d2d->createTextLayoutFromWStringStream(&trademarkCountdownText, trademarkCountdownFormat.Get(), (float)dxApp->getCurrentWidth(), 100, trademarkCountdownLayout);
+		if (!result.isValid())
+			return result;
 
 		// initialize sprites
-		//boostLogo = new graphics::Sprite(d2d, L"O:/Documents/GitLab/Repositories/Symplectos/bell0tutorial/bell0tutorial/Art/Boost.png");
-		//dxLogo = new graphics::Sprite(d2d, L"O:/Documents/GitLab/Repositories/Symplectos/bell0tutorial/bell0tutorial/Art/dx.png");
 		boostLogo = new graphics::Sprite(d2d, L"Art/Boost.png");
 		dxLogo = new graphics::Sprite(d2d, L"Art/dx.png");
+
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Pause and Resume //////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void IntroState::pause()
+	util::Expected<void> IntroState::pause()
 	{
 		isPaused = true;
+
+		// return success
+		return { };
 	}
 
-	void IntroState::resume()
+	util::Expected<void> IntroState::resume()
 	{
 		// allow mouse and keyboard input
 		dxApp->activeMouse = false;
 		dxApp->activeKeyboard = true;
 
 		isPaused = false;
+
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +148,7 @@ namespace UI
 		return true;
 	}
 
-	bool IntroState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
+	util::Expected<bool> IntroState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
 	{
 		// act on user input
 		for (auto x : activeKeyMap)
@@ -119,7 +156,7 @@ namespace UI
 			switch (x.first)
 			{
 
-			case input::GameCommands::Start:
+			case input::GameCommands::Select:
 				showTradeMarkLogos = true;
 				break;
 
@@ -136,10 +173,10 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////// Update /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void IntroState::update(const double deltaTime)
+	util::Expected<void> IntroState::update(const double deltaTime)
 	{
 		if (isPaused)
-			return;
+			return { };
 
 		if(!showTradeMarkLogos)
 			showContinueText = !showContinueText;
@@ -153,20 +190,24 @@ namespace UI
 			if (timeLeft < 0.1f)
 				timeLeft = 0.0f;
 			trademarkCountdownText << "The game will continue in: " << timeLeft << "s." << std::endl;
-			d2d->createTextLayoutFromWStringStream(&trademarkCountdownText, trademarkCountdownFormat.Get(), (float)dxApp->getCurrentWidth(), 100, trademarkCountdownLayout);
+			if (!d2d->createTextLayoutFromWStringStream(&trademarkCountdownText, trademarkCountdownFormat.Get(), (float)dxApp->getCurrentWidth(), 100, trademarkCountdownLayout).wasSuccessful())
+				return std::runtime_error("Critical error: Unable to create trademark countdown text layout!");
 		
 			if (frameTime > secondsPerLogo)
 				dxApp->changeGameState(&UI::MainMenuState::createInstance(dxApp, L"Main Menu"));
 		}
+
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Render //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void IntroState::render(const double /*farSeer*/)
+	util::Expected<void> IntroState::render(const double /*farSeer*/)
 	{
 		if (isPaused)
-			return;
+			return { };
 
 		if (!showTradeMarkLogos)
 		{
@@ -189,17 +230,23 @@ namespace UI
 
 		// print FPS information
 		d2d->printFPS();
+
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Shutdown ////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void IntroState::shutdown()
+	util::Expected<void> IntroState::shutdown()
 	{
 		// remove from the observer list
 		dxApp->removeInputHandlerObserver(this);
 		
 		delete boostLogo;
 		delete dxLogo;
+
+		// return success
+		return { };
 	}
 }

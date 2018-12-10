@@ -149,7 +149,7 @@ namespace input
 		inline const bool isPressed(int keyCode) const { return (GetAsyncKeyState(keyCode) & 0x8000) ? 1 : 0; };	// returns true iff the key is down
 		
 	protected:
-		std::unordered_map<GameCommands, GameCommand*> keyMap;		// list of all possible game commands mapped to the appropriate command structure
+		std::unordered_multimap<GameCommands, GameCommand*> keyMap;		// list of all possible game commands mapped to the appropriate command structure
 		
 		// load and save the game commands
 		void saveGameCommands();
@@ -180,5 +180,7 @@ namespace input
 		void setMouseCursor(graphics::AnimatedSprite* const mouseCursor) { this->kbm->mouseCursor = mouseCursor; };
 		void changeMouseCursorAnimationCycle(const unsigned int cycle);	
 		void updateMouseCursorAnimation(const double deltaTime);
+		long getMouseX() const { return kbm->mouseX; };
+		long getMouseY() const { return kbm->mouseY; };
 	};
 }

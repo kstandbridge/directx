@@ -31,8 +31,11 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Initialization //////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void PlayState::initialize()
+	util::Expected<void> PlayState::initialize()
 	{
+		// catch errors
+		util::Expected<void> result;
+		
 		// add as an observer to the input handler
 		dxApp->addInputHandlerObserver(this);
 
@@ -47,30 +50,40 @@ namespace core
 		dxApp->gameIsRunning = true;
 
 		// create text formats
-		d2d->createTextFormat(L"Segoe UI", 72.0f, playStateFormat);
+		result = d2d->createTextFormat(L"Segoe UI", 72.0f, playStateFormat);
+		if (!result.wasSuccessful())
+			return result;
 
 		// create text layouts
 		std::wstring playText = L"Game Scene!";
-		d2d->createTextLayoutFromWString(&playText, playStateFormat.Get(), (float)dxApp->getCurrentWidth(), 100, playStateLayout);
-
-		resume();
+		result = d2d->createTextLayoutFromWString(&playText, playStateFormat.Get(), (float)dxApp->getCurrentWidth(), 100, playStateLayout);
+		if (!result.wasSuccessful())
+			return result;
+		
+		return resume();
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Pause and Resume //////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void PlayState::pause()
+	util::Expected<void> PlayState::pause()
 	{
 		isPaused = true;
+
+		// return success
+		return { };
 	}
 
-	void PlayState::resume()
+	util::Expected<void> PlayState::resume()
 	{
 		// allow only keyboard input
 		dxApp->activeKeyboard = true;
 		dxApp->activeMouse = false;
 
 		isPaused = false;
+
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -85,7 +98,7 @@ namespace core
 		return true;
 	}
 
-	bool PlayState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
+	util::Expected<bool> PlayState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
 	{
 		// act on user input
 		for (auto x : activeKeyMap)
@@ -109,33 +122,41 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////// Update /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void PlayState::update(const double /*deltaTime*/)
+	util::Expected<void> PlayState::update(const double /*deltaTime*/)
 	{
-
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////// Render //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void PlayState::render(const double /*farSeer*/)
+	util::Expected<void> PlayState::render(const double /*farSeer*/)
 	{
 		if (!isPaused)
+		{
 			d2d->printCenteredText(playStateLayout.Get());
+
+			// print FPS information
+			d2d->printFPS();
+		}
 		else
 			d2d->printCenteredText(playStateLayout.Get(), 0, 0, 0.25f);
 
-		// print FPS information
-		d2d->printFPS();
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// Shutdown ////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void PlayState::shutdown()
+	util::Expected<void> PlayState::shutdown()
 	{
 		// remove from the observer list of the input handler
 		dxApp->removeInputHandlerObserver(this);
-
 		dxApp->gameIsRunning = false;
+
+		// return success
+		return { };
 	}
 }

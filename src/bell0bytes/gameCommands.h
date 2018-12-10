@@ -2,5 +2,5 @@
 
 namespace input
 {
-	enum GameCommands { Start, Quit, ShowFPS };
+	enum GameCommands { Quit, ShowFPS, Select, MoveLeft, MoveRight, MoveUp, MoveDown };
 }

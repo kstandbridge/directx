@@ -173,11 +173,9 @@ util::Expected<void> DirectXGame::init(LPCWSTR windowTitle)
 		return applicationInitialization;
 
 	// initialize the first game state
-	//UI::MainMenuState* mainMenu = &UI::MainMenuState::createInstance(this, L"Main Menu");
 	this->pushGameState(&UI::IntroState::createInstance(this, L"Intro"));
 
 	// add the current state as an observer to the input handler
-	//inputHandler->addObserver(gameStates.top());
 	inputHandler->addObserver((*gameStates.rbegin()));
 
 	// log and return success
@@ -291,9 +289,14 @@ void GameInput::setDefaultKeyMap()
 	bi.push_back(input::BindInfo(VK_CONTROL, input::KeyState::StillPressed));
 	bi.push_back(input::BindInfo('F', input::KeyState::JustPressed));
 
-	keyMap[input::GameCommands::ShowFPS] = new input::GameCommand(L"Show FPS", bi);
-	keyMap[input::GameCommands::Quit] = new input::GameCommand(L"Quit", VK_ESCAPE, input::KeyState::JustPressed);
-	keyMap[input::GameCommands::Start] = new input::GameCommand(L"Start", VK_RETURN, input::KeyState::JustPressed);
+	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::ShowFPS, new input::GameCommand(L"Show FPS", bi)));
+	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::Quit, new input::GameCommand(L"Quit", VK_ESCAPE, input::KeyState::JustPressed)));
+	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::Select, new input::GameCommand(L"Select", VK_RETURN, input::KeyState::JustPressed)));
+	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::Select, new input::GameCommand(L"Select", VK_LBUTTON, input::KeyState::JustPressed)));
+	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::MoveLeft, new input::GameCommand(L"MoveLeft", VK_LEFT, input::KeyState::JustPressed)));
+	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::MoveRight, new input::GameCommand(L"MoveRight", VK_RIGHT, input::KeyState::JustPressed)));
+	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::MoveUp, new input::GameCommand(L"MoveUp", VK_UP, input::KeyState::JustPressed)));
+	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::MoveDown, new input::GameCommand(L"MoveDown", VK_DOWN, input::KeyState::JustPressed)));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -307,7 +310,8 @@ void DirectXGame::acquireInput()
 util::Expected<int> DirectXGame::update(const double deltaTime)
 {	
 	// let the currently active game scene update itself
-	(*gameStates.rbegin())->update(deltaTime);
+	if (!(*gameStates.rbegin())->update(deltaTime).wasSuccessful())
+		return std::runtime_error("Critical error: Unable to update game!");
 
 	// update the mouse cursor
 	inputHandler->updateMouseCursorAnimation(deltaTime);
@@ -331,7 +335,8 @@ util::Expected<int> DirectXGame::render(const double farSeer)
 
 	// render all active states from bottom to top
 	for (auto gameState : gameStates)
-		gameState->render(farSeer);
+		if (!gameState->render(farSeer).wasSuccessful())
+			return std::runtime_error("Critical error: Unable to render scene!");
 	
 	// draw cursor (if active)
 	if(activeMouse)
