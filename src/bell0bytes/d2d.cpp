@@ -198,6 +198,16 @@ namespace graphics
 		return { };
 	}
 
+	util::Expected<void> Direct2D::createTextFormat(LPCWSTR fontFamilyName, const float fontSize, const DWRITE_TEXT_ALIGNMENT textAlignment, Microsoft::WRL::ComPtr<IDWriteTextFormat3>& textFormat)
+	{
+		return createTextFormat(fontFamilyName, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, fontSize, L"en-GB", textAlignment, DWRITE_PARAGRAPH_ALIGNMENT_CENTER, textFormat);
+	}
+
+	util::Expected<void> Direct2D::createTextFormat(LPCWSTR fontFamilyName, const float fontSize, const DWRITE_TEXT_ALIGNMENT textAlignment, const DWRITE_PARAGRAPH_ALIGNMENT paragraphAlignment, Microsoft::WRL::ComPtr<IDWriteTextFormat3>& textFormat)
+	{
+		return createTextFormat(fontFamilyName, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, fontSize, L"en-GB", textAlignment, paragraphAlignment, textFormat);
+	}
+
 	util::Expected<void> Direct2D::createTextFormat(LPCWSTR fontFamilyName, const float fontSize, Microsoft::WRL::ComPtr<IDWriteTextFormat3>& textFormat)
 	{
 		return createTextFormat(fontFamilyName, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, fontSize, L"en-GB", DWRITE_TEXT_ALIGNMENT_LEADING, DWRITE_PARAGRAPH_ALIGNMENT_CENTER, textFormat);

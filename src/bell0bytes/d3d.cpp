@@ -145,16 +145,25 @@ namespace graphics
 		// release the output adapter
 		output->Release();
 
-		// if the current resolution is not supported, switch to the lowest supported resolution
+		// if the index of the desired supported mode is known, activate it
 		bool supportedMode = false;
-		for (unsigned int i = 0; i < numberOfSupportedModes; i++)
-			if ((unsigned int)window->getClientWidth() == supportedModes[i].Width && (unsigned int)window->getClientHeight() == supportedModes[i].Height)
-			{
-				supportedMode = true;
-				currentModeDescription = supportedModes[i];
-				currentModeIndex = i;
-				break;
-			}
+		if (currentModeIndex != -1 && currentModeIndex > 0 && currentModeIndex < (int)numberOfSupportedModes)
+		{
+			currentModeDescription = supportedModes[currentModeIndex];
+			supportedMode = true;
+		}
+		else
+		{
+			// if the current resolution is not supported, switch to the lowest supported resolution
+			for (unsigned int i = 0; i < numberOfSupportedModes; i++)
+				if ((unsigned int)window->getClientWidth() == supportedModes[i].Width && (unsigned int)window->getClientHeight() == supportedModes[i].Height)
+				{
+					supportedMode = true;
+					currentModeDescription = supportedModes[i];
+					currentModeIndex = i;
+					break;
+				}
+		}
 
 		if (!supportedMode)
 		{
@@ -308,11 +317,11 @@ namespace graphics
 	{
 		// load Compiled Shader Object files
 #ifndef NDEBUG
-		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../../x64/Debug/vertexShader.cso");
-		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../../x64/Debug/pixelShader.cso");
+		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../x64/Debug/vertexShader.cso");
+		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../x64/Debug/pixelShader.cso");
 #else
-		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../../x64/Release/vertexShader.cso");
-		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../../x64/Release/pixelShader.cso");
+		util::Expected<ShaderBuffer> vertexShaderBuffer = loadShader(L"../x64/Release/vertexShader.cso");
+		util::Expected<ShaderBuffer> pixelShaderBuffer = loadShader(L"../x64/Release/pixelShader.cso");
 #endif
 		if (!vertexShaderBuffer.wasSuccessful() || !pixelShaderBuffer.wasSuccessful())
 			return "Critical error: Unable to read Compiled Shader Object files!";
@@ -434,7 +443,7 @@ namespace graphics
 		if (increase)
 		{
 			// if increase is true, choose a higher resolution, if possible
-			if (currentModeIndex < numberOfSupportedModes - 1)
+			if (currentModeIndex < (int)numberOfSupportedModes - 1)
 			{
 				currentModeIndex++;
 				changeMode = true;
@@ -462,6 +471,36 @@ namespace graphics
 			// resize everything
 			notify(input::Events::ChangeResolution);
 		}
+	}
+
+	util::Expected<void> Direct3D::changeResolution(const unsigned int index)
+	{
+		// change mode
+		currentModeIndex = index;
+		currentModeDescription = supportedModes[currentModeIndex];
+
+		// resize everything
+		return notify(input::Events::ChangeResolution);
+	}
+
+	util::Expected<void> Direct3D::toggleFullscreen(Direct2D* const d2d)
+	{
+		if (!currentlyInFullscreen)
+		{
+			// switch to fullscreen mode
+			if (FAILED(swapChain->SetFullscreenState(true, nullptr)))
+				return std::runtime_error("Unable to switch to fullscreen mode!");
+			currentlyInFullscreen = true;
+		}
+		else
+		{
+			// switch to windowed mode
+			if (FAILED(swapChain->SetFullscreenState(false, nullptr)))
+				return std::runtime_error("Unable to switch to fullscreen mode!");
+			currentlyInFullscreen = false;
+		}
+
+		return onResize(d2d);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -537,6 +576,9 @@ namespace graphics
 
 				// read fullscreen
 				startInFullscreen = lua["config"]["fullscreen"].get_or(false);
+
+				// read index
+				currentModeIndex = lua["config"]["resolution"]["index"].get_or(-1);
 #ifndef NDEBUG
 				std::stringstream res;
 				res << "The fullscreen mode was read from the LUA configuration file: " << std::noboolalpha << startInFullscreen << ".";

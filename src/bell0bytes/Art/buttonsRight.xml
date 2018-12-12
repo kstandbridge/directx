@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with TexturePacker https://www.codeandweb.com/texturepacker -->
+<!-- $TexturePacker:SmartUpdate:9b8624a15b0d58031280b73bc7a1e0f1:04ca314ae9efb0514df5da44a64052f5:b06adc3013401ca74f940a86892a9357$ -->
+<!--Format:
+n  => name of the sprite
+x  => sprite x pos in texture
+y  => sprite y pos in texture
+w  => sprite width (may be trimmed)
+h  => sprite height (may be trimmed)
+pX => x pos of the pivot point (relative to sprite width)
+pY => y pos of the pivot point (relative to sprite height)
+oX => sprite's x-corner offset (only available if trimmed)
+oY => sprite's y-corner offset (only available if trimmed)
+oW => sprite's original width (only available if trimmed)
+oH => sprite's original height (only available if trimmed)
+r => 'y' only set if sprite is rotated
+with polygon mode enabled:
+vertices   => points in sprite coordinate system (x0,y0,x1,y1,x2,y2, ...)
+verticesUV => points in sheet coordinate system (x0,y0,x1,y1,x2,y2, ...)
+triangles  => sprite triangulation, 3 vertex indices per triangle
+-->
+<TextureAtlas imagePath="buttonsRight.png" width="128" height="256">
+    <sprite n="1 - rightArrowNormal.png" x="0" y="0" w="65" h="64" pX="0.5" pY="0.5"/>
+    <sprite n="2 - rightArrowHover.png" x="0" y="64" w="65" h="64" pX="0.5" pY="0.5"/>
+    <sprite n="3 - rightArrowClicked.png" x="0" y="128" w="65" h="64" pX="0.5" pY="0.5"/>
+    <sprite n="4 - rightArrowLocked.png" x="0" y="192" w="65" h="64" pX="0.5" pY="0.5"/>
+</TextureAtlas>

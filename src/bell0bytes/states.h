@@ -28,17 +28,17 @@ namespace core
 	class GameState : public util::Observer
 	{
 	private:
-		std::wstring name;						// the name of the scene
+		const std::wstring name;				// the name of the scene
 				
 	protected:
 		DirectXApp* const dxApp;				// pointer to the main application class
 		graphics::Direct2D* const d2d;			// pointer to the Direct2D object of the DirectXApp
 
 		bool isPaused;							// true iff the scene is paused
-		bool firstCreation;						// true iff this is the first time the singleton is created
-
+		bool firstCreation;						// boolean to make sure the fixed layouts are not created more than once
+		
 		// protected constructor -> singleton
-		GameState(DirectXApp* const app, std::wstring& name);
+		GameState(DirectXApp* const app, const std::wstring& name);
 
 	public:
 		virtual ~GameState();
@@ -64,8 +64,5 @@ namespace core
 
 		// change to another scene
 		void changeState(GameState* const gameState);
-
-		// get name
-		std::wstring& getStateName() { return name; };
 	};
 }

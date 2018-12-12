@@ -14,7 +14,7 @@
 // c++ includes
 #include <iostream>
 
-// bell0bytes includes
+// bell0bytes core
 #include "states.h"
 
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
@@ -25,20 +25,20 @@ namespace core
 	class PlayState : public GameState
 	{
 	private:
-		Microsoft::WRL::ComPtr<IDWriteTextFormat3> playStateFormat;
+		Microsoft::WRL::ComPtr<IDWriteTextFormat3> playStateFormat;				// dummy text
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> playStateLayout;
 				
-	protected:
-		PlayState(DirectXApp* const app, std::wstring name);
+		// the constructor is private to ensure that this will be a singleton
+		PlayState(DirectXApp* const app, const std::wstring& name);
 
 	public:
 		virtual ~PlayState();
 
 		// singleton: get instance
-		static PlayState& createInstance(DirectXApp* const app, std::wstring name);
+		static PlayState& createInstance(DirectXApp* const app, const std::wstring& name);
 
 		// observer: on notification
-		util::Expected<bool> onNotify(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
+		util::Expected<bool> onNotify(input::InputHandler* const, const bool) override;
 
 		// initialization
 		virtual util::Expected<void> initialize() override;

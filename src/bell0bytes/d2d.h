@@ -100,6 +100,8 @@ namespace graphics
 		
 		// text formats and layouts
 		util::Expected<void> createTextFormat(LPCWSTR fontFamilyName, const DWRITE_FONT_WEIGHT fontWeight, const DWRITE_FONT_STYLE fontStyle, const DWRITE_FONT_STRETCH fontStretch, const float fontSize, LPCWSTR localeName, const DWRITE_TEXT_ALIGNMENT textAlignment, const DWRITE_PARAGRAPH_ALIGNMENT paragraphAlignment, Microsoft::WRL::ComPtr<IDWriteTextFormat3>& textFormat, IDWriteFontCollection2* const fontCollection = NULL);	// creates a text format with the specifies properties and stores the result in the textFormat parameter
+		util::Expected<void> createTextFormat(LPCWSTR fontFamilyName, const float fontSize, const DWRITE_TEXT_ALIGNMENT fontAlignment, Microsoft::WRL::ComPtr<IDWriteTextFormat3>& textFormat);
+		util::Expected<void> createTextFormat(LPCWSTR fontFamilyName, const float fontSize, const DWRITE_TEXT_ALIGNMENT fontAlignment, const DWRITE_PARAGRAPH_ALIGNMENT paragraphAlignment, Microsoft::WRL::ComPtr<IDWriteTextFormat3>& textFormat);
 		util::Expected<void> createTextFormat(LPCWSTR fontFamilyName, const float fontSize, Microsoft::WRL::ComPtr<IDWriteTextFormat3>& textFormat);																																																																							// creates a standard text format
 		util::Expected<void> createTextLayoutFromWStringStream(const std::wostringstream* const string, IDWriteTextFormat3* const textFormat, const float maxWidth, const float maxHeight, Microsoft::WRL::ComPtr<IDWriteTextLayout4>& textLayout);
 		util::Expected<void> createTextLayoutFromWString(const std::wstring* const string, IDWriteTextFormat3* const textFormat, const float maxWidth, const float maxHeight, Microsoft::WRL::ComPtr<IDWriteTextLayout4>& textLayout);
@@ -112,14 +114,14 @@ namespace graphics
 		// draw and fill rectangles
 		void fillRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float opacity = 1.0f, ID2D1Brush* const brush = NULL) const;
 		void fillRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, const float opacity = 1.0f, ID2D1Brush* const brush = NULL) const;
-		void drawRectangle(const float ulX, const float ulY, const float lrX, const float lrY, ID2D1Brush* const brush, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
-		void drawRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, ID2D1Brush* const brush, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
+		void drawRectangle(const float ulX, const float ulY, const float lrX, const float lrY, ID2D1Brush* const brush = NULL, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
+		void drawRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, ID2D1Brush* const brush = NULL, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
 		
 		// draw and fill rounded rectangles
 		void fillRoundedRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float radiusX, const float radiusY, const float opacity = 1.0f, ID2D1Brush* const brush = NULL) const;
 		void fillRoundedRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, const float radiusX, const float radiusY, const float opacity = 1.0f, ID2D1Brush* const brush = NULL) const;
-		void drawRoundedRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float radiusX, const float radiusY, ID2D1Brush* const brush, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
-		void drawRoundedRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, const float radiusX, const float radiusY, ID2D1Brush* const brush, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
+		void drawRoundedRectangle(const float ulX, const float ulY, const float lrX, const float lrY, const float radiusX, const float radiusY, ID2D1Brush* const brush = NULL, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
+		void drawRoundedRectangle(const D2D1_POINT_2F& upperLeft, const D2D1_POINT_2F& lowerRight, const float radiusX, const float radiusY, ID2D1Brush* const brush = NULL, const float width = 1.0f, ID2D1StrokeStyle1* const strokeStyle = NULL) const;
 
 		// draw and fill ellipses
 		void fillEllipse(const float centreX, const float centreY, const float radiusX, const float radiusY, const float opacity = 1.0f, ID2D1Brush* const brush = NULL) const;

@@ -23,6 +23,8 @@ namespace input
 {
 	enum GameCommands : int;
 	struct GameCommand;
+	struct BindInfo;
+	class InputHandler;
 }
 
 namespace util
@@ -33,7 +35,7 @@ namespace util
 		virtual ~Observer() {};
 		
 		virtual util::Expected<void> onNotify(const int) { return {}; };
-		virtual util::Expected<bool> onNotify(std::unordered_map<input::GameCommands, input::GameCommand&>& /*activeKeyMap*/) { return true; };
+		virtual util::Expected<bool> onNotify(input::InputHandler* const /*bi*/, const bool /*listening*/) { return true; };
 	};
 
 	class Subject
@@ -43,7 +45,7 @@ namespace util
 
 	protected:
 		util::Expected<void> notify(const int) const;
-		util::Expected<void> notify(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) const;
+		util::Expected<void> notify(input::InputHandler* const ih, const bool) const;
 
 	public:
 		Subject() {};

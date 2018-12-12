@@ -13,39 +13,45 @@
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
-// c++ includes
+// c++ containers
 #include <deque>
 
 // bell0bytes core
 #include "window.h"
-#include "timer.h"
-#include "states.h"
 
-// bell0bytes util
-#include "expected.h"
-#include "observer.h"
+// bell0bytes input
+#include "gameCommands.h"
 
 // bell0bytes graphics
 #include "d3d.h"
-#include "d2d.h"
 
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
 namespace input
 {
+	struct BindInfo;
 	class InputHandler;
-	enum Events { StartApplication, PauseApplication, ResumeApplication, QuitApplication, SwitchFullscreen, WindowChanged, ChangeResolution };
+}
+
+namespace graphics
+{
+	class Direct2D;
+	class Direct3D;
 }
 
 namespace core
 {
+	class GameState;
+	class Timer;
+	class Window;
+
 	class DirectXApp : public util::Observer
 	{
 	private:
 		// game update variables
 		const double dt;						// constant game update rate
 		const double maxSkipFrames;				// constant maximum of frames to skip in the update loop (important to not stall the system on slower computers)
-		
+
 		// timer
 		Timer* timer;							// high-precision timer
 
@@ -66,13 +72,13 @@ namespace core
 
 		// configuration file names
 		const std::wstring userPrefFile;		// configuration file editable by the user
-		
+
 		bool validUserConfigurationFile;		// true iff there was a valid user configuration file at startup
 		bool activeFileLogger;					// true iff the logging service was successfully registered
 
 		// game states
 		bool hasStarted;						// true iff the DirectXApp was started completely
-		
+
 		// stats
 		int fps;								// frames per second
 		double mspf;							// milliseconds per frame
@@ -84,33 +90,41 @@ namespace core
 		bool getPathToApplicationDataFolders();	// stores the paths to the application data folders
 		void createLoggingService();			// creates the file logger and registers it as a service
 		bool checkConfigurationFile();			// checks for valid configuration file
-		
+
 		// pause and resume game on notification
 		util::Expected<void> onNotify(const int event);
-		
+
+		// pause
+		void pauseGame();
+		void resumeGame(bool recreateGraphics = false, bool restartTimer = false);
+
 		// check for fullscreen change
 		util::Expected<void> checkFullscreen();
 
 	protected:
-		input::InputHandler* ih;				// pointer to an input handler
-
-		std::deque<GameState*> gameStates;	// the different states of the application
-		
+		// core members
 		const Window* appWindow;				// the application window (i.e. game window)
 		const HINSTANCE appInstance;			// handle to an instance of the application
 
+		// input and UI
+		input::InputHandler* ih;				// pointer to an input handler
 		std::wstring keyBindingsFile;			// game input configuration file
-
+		std::deque<GameState*> gameStates;		// the different states of the application
+		
 		// DirectX Graphics
 		graphics::Direct3D* d3d;				// pointer to the Direct3D class
 		graphics::Direct2D* d2d;				// pointer to the Direct2D class
 
 		// game states
 		bool isPaused;							// true iff the game is paused
-					
+		
+		// options
+		bool showFPS;							// true if and only if FPS information should be printed to the screen. Default: true; can be toggled via F1 (standard binding)
+		bool gameIsRunning;						// true iff the main game state is running (either actively or in the background)
+
 		// constructor and destructor
 		DirectXApp(HINSTANCE hInstance, const std::wstring& applicationName, const std::wstring& applicationVersion);
-		
+
 		// initialization and shutdown
 		virtual util::Expected<void> init(LPCWSTR windowTitle);				// initializes the DirectX application
 		virtual void shutdown(const util::Expected<void>* const expected = NULL); // clean up and shutdown the DirectX application
@@ -127,30 +141,22 @@ namespace core
 
 		// generating output
 		virtual util::Expected<int> render(const double farseer) = 0;		// renders the game world
-				
+
 	public:
 		~DirectXApp();
-
-		// options
-		bool showFPS;							// true if and only if FPS information should be printed to the screen. Default: true; can be toggled via F1 (standard binding)
-
+				
 		// input variables
 		bool activeMouse;						// true iff mouse input is active
 		bool activeKeyboard;					// true iff keyboard input is active
 
 		// manage the game states
-		void changeGameState(GameState* const gameState);
-		void pushGameState(GameState* const gameState);
-		void popGameState();
+		util::Expected<void> changeGameState(GameState* const gameState);	// change game state (deletes all previous states)
+		util::Expected<void> pushGameState(GameState* const gameState);		// push new game state and pause current one
+		util::Expected<void> popGameState();								// pop game state and resume previous one
 
-		void addInputHandlerObserver(GameState* gameState);		// adds a game state as an observer to the input handler
-		void removeInputHandlerObserver(GameState* gameState);	// removes a game state from the observer list of the input handler
-
-		bool gameIsRunning;						// true iff the main game state is running (either actively or in the background)
-
-		// pause
-		void pauseGame();
-		void resumeGame(bool recreateGraphics = false, bool restartTimer = false);
+		// add observers to the input handler
+		void addInputHandlerObserver(GameState* const gameState) const;		// adds a game state as an observer to the input handler
+		void removeInputHandlerObserver(GameState* const gameState) const;	// removes a game state from the observer list of the input handler
 
 		// getters
 		graphics::Direct2D* const getDirect2D() const { return d2d; };
@@ -159,10 +165,19 @@ namespace core
 		const HINSTANCE& getApplicationInstance() const { return appInstance; };
 		const HWND getMainWindow() const { return appWindow->getMainWindowHandle(); };
 
-		// get current resolution
+		// screen resolution
 		const unsigned int getCurrentWidth() const { return d3d->getCurrentWidth(); };
 		const unsigned int getCurrentHeight() const { return d3d->getCurrentHeight(); };
-		
+		util::Expected<void> changeResolution(const unsigned int index) const { return d3d->changeResolution(index); };
+		const bool getFullscreenState() const { return d3d->getFullscreenState(); };
+		util::Expected<void> toggleFullscreen() const;
+		const DXGI_MODE_DESC* const getSupportedModes() const { return d3d->getSupportedModes(); };
+		const unsigned int getNumberOfSupportedModes() const { return d3d->getNumberOfSupportedModes(); };
+		const unsigned int getCurrentModeIndex() const { return d3d->getCurrentModeIndex(); };
+
+		// write resolution and fullscreen state to lua file
+		util::Expected<void> saveConfiguration(const unsigned int width, const unsigned int height, const unsigned int index, const bool fullscreen) const;
+
 		// paths and configuration files
 		const std::wstring& getPathToConfigurationFiles() const { return pathToUserConfigurationFiles; };
 		const std::wstring& getPrefsFile() const { return userPrefFile; };
@@ -176,5 +191,20 @@ namespace core
 		// mouse position
 		long getMouseX() const;
 		long getMouseY() const;
+
+		// key bindings and game commands
+		void getCommandsMappedToGameAction(const input::GameCommands, std::vector<input::GameCommand*>& commands) const;	// get all commands mapped to the specified game action
+		void addNewCommand(input::GameCommands gameCommand, input::GameCommand& command) const;								// add a new command to the key map of the input handler
+		void loadKeyBindings() const;																						// load key bindings from file
+		void saveKeyBindings() const;																						// store key bindings to a file
+		void getKeysMappedToCommand(const input::GameCommands, std::vector<std::vector<input::BindInfo> >&) const;			// list of all possible game commands mapped to the appropriate command structure
+		const util::Expected<std::wstring> getKeyName(const unsigned int keyCode) const;									// get human readable key name from virtual key code
+
+		// user input
+		void enableListeningForInput() const;		// start listening for specifically requested input
+		void disableListeningForInput() const;		// stop listening for special user input
+
+		// options
+		void toggleFPS() { showFPS = !showFPS; };
 	};
 }

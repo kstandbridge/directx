@@ -159,22 +159,25 @@ namespace graphics
 		d2d->devCon->DrawBitmap(bitmap.Get(), rect, opacity, interPol, sourceRect);
 	}
 
-	void AnimatedSprite::draw() const
+	void AnimatedSprite::draw(const float scaleFactor, const float offsetX, const float offsetY, D2D1_RECT_F* const rect) const
 	{
 		unsigned int cycle = this->activeAnimation;
 		unsigned int frame = this->activeAnimationFrame;
 		AnimationCycleData cycleData = animationData->cyclesData[cycle];
 
 		// compute the destination rectangle, make sure to put the rotation centre at the desired position
-		// upper left x: x + width * rotationCenterX
-		// upper left y: y + height * rotationCenterY
-		// lower right x: x + width * (1-rotationCenterX)
-		// lower right y: y + height * (1-rotationCenterY)
+		// upper left x: x + offsetX - width * rotationCenterX * scaleFactor
+		// upper left y: y + offsetY - height * rotationCenterY * scaleFactor
+		// lower right x: x + offsetX + width * (1-rotationCenterX) * scaleFactor
+		// lower right y: y + offsetY + height * (1-rotationCenterY) * scaleFactor
 
-		D2D1_RECT_F destRect = {this->x-(cycleData.width*cycleData.rotationCenterX), 
-								this->y-(cycleData.height*cycleData.rotationCenterY), 
-								this->x+(cycleData.width*(1.0f-cycleData.rotationCenterX)),
-								this->y+(cycleData.height*(1.0f-cycleData.rotationCenterY))};
+		D2D1_RECT_F destRect = {this->x+offsetX-(cycleData.width*cycleData.rotationCenterX*scaleFactor), 
+								this->y+offsetY-(cycleData.height*cycleData.rotationCenterY*scaleFactor), 
+								this->x+offsetX+(cycleData.width*(1.0f-cycleData.rotationCenterX)*scaleFactor),
+								this->y+offsetY+(cycleData.height*(1.0f-cycleData.rotationCenterY)*scaleFactor)};
+
+		if (rect != NULL)
+			*rect = destRect;
 
 		// compute the coordinates of the upper left corner of the source rectangle
 		// upper left x of the i-th sprite: border padding plus i-times the combined width of each image and padding between images

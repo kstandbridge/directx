@@ -1,10 +1,15 @@
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
-// bell0bytes
+// bell0bytes core
 #include "app.h"
+
+// bell0bytes UI
 #include "playState.h"
-#include "gameCommands.h"
 #include "gameMenuState.h"
+
+// bell0bytes input
+#include "gameCommands.h"
+#include "inputHandler.h"
 
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace core
@@ -12,17 +17,13 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	PlayState::PlayState(DirectXApp* const app, std::wstring name) : GameState(app, name)
-	{
-
-	}
+	PlayState::PlayState(DirectXApp* const app, const std::wstring& name) : GameState(app, name)
+	{ }
 
 	PlayState::~PlayState()
-	{
+	{ }
 
-	}
-
-	PlayState& PlayState::createInstance(DirectXApp* const app, std::wstring stateName)
+	PlayState& PlayState::createInstance(DirectXApp* const app, const std::wstring& stateName)
 	{
 		static PlayState instance(app, stateName);
 		return instance;
@@ -43,24 +44,27 @@ namespace core
 		dxApp->activeKeyboard = true;
 		dxApp->activeMouse = false;
 
-		// show fps
-		dxApp->showFPS = true;
-
 		// notify the main application class that the game is running
-		dxApp->gameIsRunning = true;
+		isPaused = false;
 
-		// create text formats
-		result = d2d->createTextFormat(L"Segoe UI", 72.0f, playStateFormat);
-		if (!result.wasSuccessful())
-			return result;
+		if (firstCreation)
+		{
+			// create text formats
+			result = d2d->createTextFormat(L"Segoe UI", 72.0f, DWRITE_TEXT_ALIGNMENT_CENTER, playStateFormat);
+			if (!result.wasSuccessful())
+				return result;
 
-		// create text layouts
-		std::wstring playText = L"Game Scene!";
-		result = d2d->createTextLayoutFromWString(&playText, playStateFormat.Get(), (float)dxApp->getCurrentWidth(), 100, playStateLayout);
-		if (!result.wasSuccessful())
-			return result;
+			// create text layouts
+			std::wstring playText = L"Game Scene!";
+			result = d2d->createTextLayoutFromWString(&playText, playStateFormat.Get(), (float)dxApp->getCurrentWidth(), 100, playStateLayout);
+			if (!result.wasSuccessful())
+				return result;
+		}
+
+		firstCreation = false;
 		
-		return resume();
+		// return success
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -89,10 +93,11 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// User Input //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<bool> PlayState::onNotify(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
+	util::Expected<bool> PlayState::onNotify(input::InputHandler* const ih, const bool listening)
 	{
 		if(!isPaused)
-			return handleInput(activeKeyMap);
+			if(!listening)
+				return handleInput(ih->activeKeyMap);
 
 		// return success
 		return true;
@@ -105,18 +110,18 @@ namespace core
 		{
 			switch (x.first)
 			{
-			case input::GameCommands::Quit:
-				dxApp->pushGameState(&UI::GameMenuState::createInstance(dxApp, L"Game Menu"));
-				this->pause();
-				return false;
+			case input::GameCommands::Back:
+				if (!dxApp->pushGameState(&UI::GameMenuState::createInstance(dxApp, L"Game Menu")).wasSuccessful())
+					return std::runtime_error("Critical error: Unable to push game menu state!");
+				return false;	// notify stack change
 
 			case input::GameCommands::ShowFPS:
-				dxApp->showFPS = !dxApp->showFPS;
+				dxApp->toggleFPS();
 				break;
 			}
 		}
 
-		return true;
+		return true;	// no stack change
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -135,13 +140,13 @@ namespace core
 	{
 		if (!isPaused)
 		{
-			d2d->printCenteredText(playStateLayout.Get());
+			d2d->printText(0, dxApp->getCurrentHeight()/2.0f - 50.0f, playStateLayout.Get());
 
 			// print FPS information
 			d2d->printFPS();
 		}
 		else
-			d2d->printCenteredText(playStateLayout.Get(), 0, 0, 0.25f);
+			d2d->printText(0, dxApp->getCurrentHeight()/2.0f - 50.f, playStateLayout.Get(), 0.25f);
 
 		// return success
 		return { };
@@ -154,7 +159,7 @@ namespace core
 	{
 		// remove from the observer list of the input handler
 		dxApp->removeInputHandlerObserver(this);
-		dxApp->gameIsRunning = false;
+		isPaused = true;
 
 		// return success
 		return { };

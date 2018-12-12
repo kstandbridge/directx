@@ -1,12 +1,16 @@
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
-// bell0bytes
+// bell0bytes core
 #include "app.h"
+#include "playState.h"
+
+// bell0bytes UI
 #include "GameMenuState.h"
+#include "mainMenuState.h"
+
+// bell0bytes input
 #include "gameCommands.h"
 #include "inputHandler.h"
-#include "playState.h"
-#include "mainMenuState.h"
 
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace UI
@@ -14,7 +18,7 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	GameMenuState::GameMenuState(core::DirectXApp* const app, std::wstring name) : GameState(app, name)
+	GameMenuState::GameMenuState(core::DirectXApp* const app, const std::wstring& name) : GameState(app, name)
 	{
 
 	}
@@ -24,7 +28,7 @@ namespace UI
 
 	}
 
-	GameMenuState& GameMenuState::createInstance(core::DirectXApp* const app, std::wstring stateName)
+	GameMenuState& GameMenuState::createInstance(core::DirectXApp* const app, const std::wstring& stateName)
 	{
 		static GameMenuState instance(app, stateName);
 		return instance;
@@ -51,17 +55,23 @@ namespace UI
 		// allow mouse and keyboard input
 		dxApp->activeMouse = true;
 		dxApp->activeKeyboard = true;
+		isPaused = false;
 
-		// create text formats
-		result = d2d->createTextFormat(L"Segoe UI", 72.0f, gameMenuFormat);
-		if (!result.isValid())
-			return result;
+		if (firstCreation)
+		{
+			// create text formats
+			result = d2d->createTextFormat(L"Segoe UI", 72.0f, DWRITE_TEXT_ALIGNMENT_CENTER, gameMenuFormat);
+			if (!result.isValid())
+				return result;
 
-		// create text layouts
-		std::wstring menu = L"Game Menu on top of the Game Scene";
-		result = d2d->createTextLayoutFromWString(&menu, gameMenuFormat.Get(), (float)dxApp->getCurrentWidth(), 100, gameMenuLayout);
-		if (!result.wasSuccessful())
-			return result;
+			// create text layouts
+			std::wstring menu = L"Game Menu on top of the Game Scene";
+			result = d2d->createTextLayoutFromWString(&menu, gameMenuFormat.Get(), (float)dxApp->getCurrentWidth(), 100, gameMenuLayout);
+			if (!result.wasSuccessful())
+				return result;
+		}
+
+		firstCreation = false;
 
 		// return success
 		return { };
@@ -93,10 +103,11 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// User Input //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<bool> GameMenuState::onNotify(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
+	util::Expected<bool> GameMenuState::onNotify(input::InputHandler* const ih, const bool listening)
 	{
 		if (!isPaused)
-			return handleInput(activeKeyMap);
+			if(!listening)
+				return handleInput(ih->activeKeyMap);
 
 		// return success
 		return true;
@@ -113,19 +124,19 @@ namespace UI
 			switch (x.first)
 			{
 			case input::Select:
-				// create game play state
-				if (!dxApp->gameIsRunning)
-					dxApp->changeGameState(&core::PlayState::createInstance(dxApp, L"Game"));
-				else
-					dxApp->popGameState();
-				return false;
+				// continue game
+				if (!dxApp->popGameState().wasSuccessful())
+					return std::runtime_error("Critical error: Unable to pop game menu state!");
+				return false;	// notify stack change
 
-			case input::GameCommands::Quit:
-				dxApp->changeGameState(&UI::MainMenuState::createInstance(dxApp, L"Main Menu"));
-				return false;
+			case input::GameCommands::Back:
+				// back to main menu
+				if (!dxApp->changeGameState(&UI::MainMenuState::createInstance(dxApp, L"Main Menu")).wasSuccessful())
+					return std::runtime_error("Critical error: Unable to change game state to main menu");
+				return false;	// notify stack change
 
 			case input::GameCommands::ShowFPS:
-				dxApp->showFPS = !dxApp->showFPS;
+				dxApp->toggleFPS();
 				break;
 			}
 		}
@@ -147,7 +158,7 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<void> GameMenuState::render(const double /*farSeer*/)
 	{
-		d2d->printCenteredText(gameMenuLayout.Get(), -400, -250);
+		d2d->printText(0, 200, gameMenuLayout.Get());
 
 		// print FPS information
 		d2d->printFPS();
@@ -163,6 +174,8 @@ namespace UI
 	{
 		// remove from the observer list
 		dxApp->removeInputHandlerObserver(this);
+
+		isPaused = true;
 
 		// return success
 		return { };

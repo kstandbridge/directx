@@ -1,11 +1,18 @@
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
-// bell0bytes
+// bell0bytes core
 #include "app.h"
+
+// bell0bytes UI
 #include "mainMenuState.h"
+#include "playState.h"
+#include "optionsMenuState.h"
+
+// bell0bytes input
 #include "gameCommands.h"
 #include "inputHandler.h"
-#include "playState.h"
+
+// bell0bytes graphics
 #include "sprites.h"
 #include "buttons.h"
 
@@ -15,17 +22,13 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	MainMenuState::MainMenuState(core::DirectXApp* const app, std::wstring name) : GameState(app, name), isShuttingDown(false), currentlySelectedButton(0)
-	{
-		
-	}
+	MainMenuState::MainMenuState(core::DirectXApp* const app, const std::wstring& name) : GameState(app, name), currentlySelectedButton(0)
+	{ }
 
 	MainMenuState::~MainMenuState()
-	{
-		firstCreation = true;
-	}
+	{ }
 
-	MainMenuState& MainMenuState::createInstance(core::DirectXApp* const app, std::wstring stateName)
+	MainMenuState& MainMenuState::createInstance(core::DirectXApp* const app, const std::wstring& stateName)
 	{
 		static MainMenuState instance(app, stateName);
 		return instance;
@@ -53,21 +56,25 @@ namespace UI
 		dxApp->activeMouse = true;
 		dxApp->activeKeyboard = true;
 
-		// create text formats
-		result = d2d->createTextFormat(L"Segoe UI", 72.0f, mainMenuFormat);
-		if (!result.isValid())
-			return result;
+		if (firstCreation)
+		{
+			// create text format
+			result = d2d->createTextFormat(L"Lucida Handwriting", 128.0f, DWRITE_TEXT_ALIGNMENT_CENTER, mainMenuFormat);
+			if (!result.isValid())
+				return result;
 
-		// create text layouts
-		std::wstring menu = L"Main Menu";
-		result = d2d->createTextLayoutFromWString(&menu, mainMenuFormat.Get(), (float)dxApp->getCurrentWidth(), 100, mainMenuLayout);
-		if (!result.isValid())
-			return result;
-
+			// create text layout
+			std::wstring menu = L"Main Menu";
+			result = d2d->createTextLayoutFromWString(&menu, mainMenuFormat.Get(), (float)dxApp->getCurrentWidth(), 200, mainMenuLayout);
+			if (!result.isValid())
+				return result;
+		}
+		
 		// create buttons
 		if (!initializeButtons().wasSuccessful())
 			return std::runtime_error("Critical error: Unable to initialize menu buttons!");
-
+		
+		// do not initialize the text layouts again
 		firstCreation = false;
 
 		// return success
@@ -76,14 +83,13 @@ namespace UI
 
 	util::Expected<void> MainMenuState::initializeButtons()
 	{
-		/////////////////////////////////////////////////////////////////////////////////////////
-		////////////////////////////////// Play Button //////////////////////////////////////////
-		/////////////////////////////////////////////////////////////////////////////////////////
-
-		// set play button animation cycles
 		std::vector<graphics::AnimationCycleData> animationCycles;
 		graphics::AnimationCycleData cycle;
 		graphics::AnimationData* animations;
+
+		/////////////////////////////////////////////////////////////////////////////////////////
+		////////////////////////////////// Play Button //////////////////////////////////////////
+		/////////////////////////////////////////////////////////////////////////////////////////
 
 		// cycle
 		cycle.name = L"Play Button Deselected";
@@ -113,15 +119,15 @@ namespace UI
 		catch (std::runtime_error& e) { return e; }
 
 		// set lambda function
-		auto onClick = [this]
+		auto onClick = [this]() -> util::Expected<bool>
 		{
-			this->isPaused = true;
-			dxApp->changeGameState(&core::PlayState::createInstance(dxApp, L"Game"));
-			return false;
+			if (!dxApp->changeGameState(&core::PlayState::createInstance(dxApp, L"Game")).wasSuccessful())
+				return std::runtime_error("Critical error: Unable to change to the main game state!");
+			return false;	// notify that the stack was changed!
 		};
 
 		// add button to the list
-		menuButtons.push_back(new Button(L"Play Button", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClick));
+		menuButtons.push_back(new AnimatedButton(L"Play Button", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClick));
 
 		// clear animation data
 		animationCycles.clear();
@@ -153,25 +159,27 @@ namespace UI
 		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
 		animationCycles.push_back(cycle);
 
-		// create play button animations
+		// create button animations
 		try { animations = new graphics::AnimationData(d2d, L"Art/optionsButton.png", animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		// set lambda function
-		auto onClickOptions = [this]
+		auto onClickOptions = [this]() -> util::Expected<bool>
 		{
-			return true;
+			if (!dxApp->changeGameState(&UI::OptionsMenuState::createInstance(dxApp, L"Options Menu")).wasSuccessful())
+				return std::runtime_error("Critical error: Unable to change to the options menu state!");
+			return false;		// notify that the stack was changed!
 		};
 
 		// add button to the list
-		menuButtons.push_back(new Button(L"Quit Options", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickOptions));
+		menuButtons.push_back(new AnimatedButton(L"Options", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickOptions));
 
 		// clear animation data
 		animationCycles.clear();
 		std::vector<graphics::AnimationCycleData>(animationCycles).swap(animationCycles);
 		
 		/////////////////////////////////////////////////////////////////////////////////////////
-		////////////////////////////////// Quit Button //////////////////////////////////////////
+		////////////////////////////////// Back Button //////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
 		// cycle
 		cycle.name = L"Quit Button Deselected";
@@ -201,22 +209,20 @@ namespace UI
 		catch (std::runtime_error& e) { return e; }
 
 		// set lambda function
-		auto onClickQuit = [this]
+		auto onClickQuit = [this]() -> util::Expected<bool>
 		{
-			this->isShuttingDown = true;
 			PostMessage(dxApp->getMainWindow(), WM_CLOSE, 0, 0);
-			this->shutdown();
-			return false;
+			if (!shutdown().wasSuccessful())
+				return std::runtime_error("Critical error: Unable to shut down the main menu!");
+			return false;	// notify that the stack was changed
 		};
 
 		// add button to the list
-		menuButtons.push_back(new Button(L"Quit Button", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickQuit));
+		menuButtons.push_back(new AnimatedButton(L"Quit Button", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickQuit));
 
 		// clear animation data
 		animationCycles.clear();
 		std::vector<graphics::AnimationCycleData>(animationCycles).swap(animationCycles);
-
-
 
 		// set to unpaused
 		this->isPaused = false;
@@ -254,10 +260,11 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// User Input //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<bool> MainMenuState::onNotify(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
+	util::Expected<bool> MainMenuState::onNotify(input::InputHandler* const ih, const bool listening)
 	{
 		if(!isPaused)
-			return handleInput(activeKeyMap);
+			if(!listening)
+				return handleInput(ih->activeKeyMap);
 
 		// return success
 		return true;
@@ -272,7 +279,7 @@ namespace UI
 			{
 			case input::Select:
 				// activate currently selected button
-				return menuButtons[currentlySelectedButton]->click();;
+				return menuButtons[currentlySelectedButton]->click();
 
 			case input::MoveDown:
 				// select next button in the list
@@ -282,7 +289,7 @@ namespace UI
 				else
 					currentlySelectedButton = 0;
 				menuButtons[currentlySelectedButton]->select();
-				return true;
+				return true;	// no stack change
 
 			case input::MoveUp:
 				// select next button in the list
@@ -292,14 +299,19 @@ namespace UI
 				else
 					currentlySelectedButton = (unsigned int)menuButtons.size()-1;
 				menuButtons[currentlySelectedButton]->select();
-				return true;
+				return true;	// no stack change
 
 			case input::GameCommands::ShowFPS:
-				dxApp->showFPS = !dxApp->showFPS;
+				dxApp->toggleFPS();
 				break;
+
+			case input::GameCommands::Back:
+				currentlySelectedButton = 2;
+				return menuButtons[currentlySelectedButton]->click();
 			}
 		}
 
+		// notify that the stack was not changed
 		return true;
 	}
 
@@ -351,10 +363,8 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<void> MainMenuState::render(const double /*farSeer*/)
 	{
-		if (isShuttingDown)
-			return {  };
-
-		d2d->printCenteredText(mainMenuLayout.Get(), 0, -300);
+		// print title
+		d2d->printText(0, 100, mainMenuLayout.Get());
 
 		// draw buttons
 		unsigned int i = 0;
@@ -377,13 +387,15 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<void> MainMenuState::shutdown()
 	{
+		ShowCursor(false);
 		this->isPaused = true;
 
 		// delete buttons
 		for (auto button : menuButtons)
 			delete button;
 		menuButtons.clear();
-	
+		currentlySelectedButton = 0;
+
 		// remove from the observer list
 		dxApp->removeInputHandlerObserver(this);
 

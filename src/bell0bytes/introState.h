@@ -11,7 +11,7 @@
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
-// bell0bytes includes
+// bell0bytes core
 #include "states.h"
 
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
@@ -31,21 +31,22 @@ namespace UI
 	{
 
 	private:
-		// text
+		// text formats
 		Microsoft::WRL::ComPtr<IDWriteTextFormat3> companyNameFormat;
 		Microsoft::WRL::ComPtr<IDWriteTextFormat3> authorNameFormat;
+		Microsoft::WRL::ComPtr<IDWriteTextFormat3> continueFormat;
+		Microsoft::WRL::ComPtr<IDWriteTextFormat3> trademarkFormat;
+		Microsoft::WRL::ComPtr<IDWriteTextFormat3> trademarkCountdownFormat;
+
+		// text layouts
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> companyNameLayout;
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> authorNameLayout;
-		Microsoft::WRL::ComPtr<IDWriteTextFormat3> continueFormat;
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> continueLayout;
-		Microsoft::WRL::ComPtr<IDWriteTextFormat3> trademarkFormat;
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> trademarkLayout;
-		Microsoft::WRL::ComPtr<IDWriteTextFormat3> trademarkCountdownFormat;
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> trademarkCountdownLayout;
 
-		// Logos
-		graphics::Sprite* boostLogo;
-		graphics::Sprite* dxLogo;
+		// logos
+		std::vector<graphics::Sprite*> logos;
 
 		// calculate frame time
 		double frameTime;
@@ -57,17 +58,25 @@ namespace UI
 		// show logos
 		bool showTradeMarkLogos;
 
+		// texts and layouts
+		util::Expected<void> createTextFormats();
+		util::Expected<void> createTextLayouts();
+		util::Expected<void> updateTrademarkCountdownTextLayout();
+
+		// logos
+		util::Expected<void> initializeLogoSprites();
+
 	protected:
-		IntroState(core::DirectXApp* const app, std::wstring name);
+		IntroState(core::DirectXApp* const app, const std::wstring& name);
 
 	public:
 		virtual ~IntroState();
 
 		// singleton: get instance
-		static IntroState& createInstance(core::DirectXApp* const app, std::wstring name);
+		static IntroState& createInstance(core::DirectXApp* const app, const std::wstring& name);
 
 		// observer: on notification
-		util::Expected<bool> onNotify(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
+		util::Expected<bool> onNotify(input::InputHandler* const ih, const bool listening) override;
 
 		// initialization
 		virtual util::Expected<void> initialize() override;

@@ -33,6 +33,7 @@
 *			- 10/06/2018 - Mice
 *			- 12/06/2018 - boost serialization
 *			- 14/06/2018 - game states
+*			- 21/06/2018 - game options (including new key bindings)
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
@@ -164,7 +165,7 @@ util::Expected<void> DirectXGame::init(LPCWSTR windowTitle)
 
 	// initialize the input handler
 	try { inputHandler = new GameInput(this, this->keyBindingsFile); }
-	catch (...) { return std::runtime_error("Critical error: Unable to create the input handler!"); }
+	catch (std::exception& e) { e;  return std::runtime_error("Critical error: Unable to create the input handler!"); }
 	ih = inputHandler;
 
 	// initialize main game graphics
@@ -173,7 +174,9 @@ util::Expected<void> DirectXGame::init(LPCWSTR windowTitle)
 		return applicationInitialization;
 
 	// initialize the first game state
-	this->pushGameState(&UI::IntroState::createInstance(this, L"Intro"));
+	applicationInitialization = pushGameState(&UI::IntroState::createInstance(this, L"Intro"));
+	if (!applicationInitialization.wasSuccessful())
+		return applicationInitialization;
 
 	// add the current state as an observer to the input handler
 	inputHandler->addObserver((*gameStates.rbegin()));
@@ -290,7 +293,7 @@ void GameInput::setDefaultKeyMap()
 	bi.push_back(input::BindInfo('F', input::KeyState::JustPressed));
 
 	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::ShowFPS, new input::GameCommand(L"Show FPS", bi)));
-	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::Quit, new input::GameCommand(L"Quit", VK_ESCAPE, input::KeyState::JustPressed)));
+	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::Back, new input::GameCommand(L"Back", VK_ESCAPE, input::KeyState::JustPressed)));
 	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::Select, new input::GameCommand(L"Select", VK_RETURN, input::KeyState::JustPressed)));
 	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::Select, new input::GameCommand(L"Select", VK_LBUTTON, input::KeyState::JustPressed)));
 	keyMap.insert(std::pair<input::GameCommands, input::GameCommand*>(input::GameCommands::MoveLeft, new input::GameCommand(L"MoveLeft", VK_LEFT, input::KeyState::JustPressed)));

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with TexturePacker https://www.codeandweb.com/texturepacker -->
+<!-- $TexturePacker:SmartUpdate:225068f273d69871f3649527d76c95f3:8b48695c6ff08aa9a9d021973e5c2527:e9a09c577110ab78663dcd1699eb3ab7$ -->
+<!--Format:
+n  => name of the sprite
+x  => sprite x pos in texture
+y  => sprite y pos in texture
+w  => sprite width (may be trimmed)
+h  => sprite height (may be trimmed)
+pX => x pos of the pivot point (relative to sprite width)
+pY => y pos of the pivot point (relative to sprite height)
+oX => sprite's x-corner offset (only available if trimmed)
+oY => sprite's y-corner offset (only available if trimmed)
+oW => sprite's original width (only available if trimmed)
+oH => sprite's original height (only available if trimmed)
+r => 'y' only set if sprite is rotated
+with polygon mode enabled:
+vertices   => points in sprite coordinate system (x0,y0,x1,y1,x2,y2, ...)
+verticesUV => points in sheet coordinate system (x0,y0,x1,y1,x2,y2, ...)
+triangles  => sprite triangulation, 3 vertex indices per triangle
+-->
+<TextureAtlas imagePath="refreshButton.png" width="64" height="256">
+    <sprite n="1 - refreshNormal.png" x="0" y="0" w="64" h="64" pX="0.5" pY="0.5"/>
+    <sprite n="2 - refreshHover.png" x="0" y="64" w="64" h="64" pX="0.5" pY="0.5"/>
+    <sprite n="3 - refreshClicked.png" x="0" y="128" w="64" h="64" pX="0.5" pY="0.5"/>
+    <sprite n="4 - refreshLocked.png" x="0" y="192" w="64" h="64" pX="0.5" pY="0.5"/>
+</TextureAtlas>

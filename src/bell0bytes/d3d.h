@@ -87,13 +87,10 @@ namespace graphics
 		unsigned int numberOfSupportedModes;					// the number of supported screen modes for the desired colour format
 		DXGI_MODE_DESC* supportedModes;							// list of all supported screen modes for the desired colour format
 		DXGI_MODE_DESC  currentModeDescription;					// description of the currently active screen mode
-		unsigned int currentModeIndex;							// the index of the current mode in the list of all supported screen modes
+		int currentModeIndex;									// the index of the current mode in the list of all supported screen modes; -1 if not known yet
 		bool startInFullscreen;									// true iff the game should start in fullscreen mode
 		BOOL currentlyInFullscreen;								// true iff the game is currently in fullscreen mode
 		bool changeMode;										// true iff the screen resolution should be changed this frame
-
-		// functions to change screen resolutions
-		void changeResolution(bool increase);					// changes the screen resolution, if increase is true, a higher resolution is chosen, else the resolution is lowered
 
 		// helper functions
 		util::Expected<void> writeCurrentModeDescriptionToConfigurationFile() const;	// write the current screen resolution to the configuration file
@@ -102,7 +99,9 @@ namespace graphics
 		// functions to create resources
 		util::Expected<void> createResources(Direct2D* const d2d, const core::Window* const window);	// create device resources, such as the swap chain
 		
-
+		// functions to change screen resolutions
+		void changeResolution(bool increase);					// changes the screen resolution, if increase is true, a higher resolution is chosen, else the resolution is lowered
+		
 		// rendering pipeline
 		util::Expected<void> initPipeline();					// initializes the (graphics) rendering pipeline
 
@@ -113,17 +112,17 @@ namespace graphics
 		// constructor
 		Direct3D(core::DirectXApp* const dxApp, const core::Window* const mainWindow);
 		~Direct3D();
-
+			
 		// resize resources
 		util::Expected<void> onResize(Direct2D* const d2d);		// resize the resources
+		util::Expected<bool> switchFullscreen() const;			// return true iff the fullscreen state should be switched
+		util::Expected<void> toggleFullscreen(Direct2D* const); // toggle fullscreen mode
+		util::Expected<void> changeResolution(const unsigned int index);		// change screen resolution to the desired index
 
 		// present the scene
 		void clearBuffers();									// clear the back and depth/stencil buffers (white)
 		void clearBuffers(float[4]);							// clear the back buffer with a given colour
 		util::Expected<int> present();							// present the chain, by flipping the buffers
-
-		// getters
-		util::Expected<bool> switchFullscreen() const;			// return true iff the fullscreen state should be switched
 
 		const unsigned int getCurrentWidth() const { return currentModeDescription.Width; };
 		const unsigned int getCurrentHeight() const { return currentModeDescription.Height; };
@@ -131,6 +130,8 @@ namespace graphics
 		const unsigned int getCurrentRefreshRateNum() const { return currentModeDescription.RefreshRate.Numerator; };
 		const unsigned int getCurrentModeIndex() const { return currentModeIndex; };
 		const unsigned int getNumberOfSupportedModes() const { return numberOfSupportedModes; };
+		const bool getFullscreenState() const { return currentlyInFullscreen; };
+		const DXGI_MODE_DESC* const getSupportedModes() const { return supportedModes; };
 
 		friend class Direct2D;
 	};

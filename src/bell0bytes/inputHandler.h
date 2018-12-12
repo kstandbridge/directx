@@ -23,12 +23,10 @@
 #include <unordered_map>
 #include <array>
 
-// pointers
-#include <memory>
+// bell0bytes util
+#include "expected.h"		// error handling
+#include "observer.h"		// observer pattern
 
-// bell0bytes utilities
-#include "expected.h"
-#include "observer.h"
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
 namespace boost
@@ -76,6 +74,9 @@ namespace input
 		BindInfo(const unsigned int keyCode, const KeyState keyState);
 		~BindInfo() {};
 
+		// getters
+		const unsigned int getKeyCode() const { return keyCode; };
+
 		friend struct GameCommand;
 		friend class InputHandler;
 		friend class boost::serialization::access;
@@ -95,20 +96,27 @@ namespace input
 			ar & name & chord;
 		}
 
+		void setChord(const std::vector<BindInfo>* const bi) { chord = *bi; };
+
 	public:
 		// constructors and destructor
 		GameCommand();
+		GameCommand(const std::wstring& name);
 		GameCommand(const std::wstring& name, const unsigned int keyCode, const KeyState keyState);
 		GameCommand(const std::wstring& name, const BindInfo& bi);
 		GameCommand(const std::wstring& name, const std::vector<BindInfo>& chord);
 		~GameCommand() {};
+
+		// get chord
+		const std::vector<BindInfo> getChord() const { return chord; };
+		void setChord(std::vector<BindInfo> newChord) { chord = newChord; };
 
 		friend class InputHandler;
 		friend class boost::serialization::access;
 	};
 
 	// the keyboard and mouse class
-	class KeyboardAndMouse
+	struct KeyboardAndMouse
 	{
 	private:
 		std::array<bool, 256> currentState;					// the state of the keyboard keys and mouse buttons in the current frame
@@ -126,19 +134,24 @@ namespace input
 	};
 
 	// the main input handler class
+	// sends notifications to the various game states on user input
 	class InputHandler : public util::Subject
 	{
 	private:
-		core::DirectXApp* dxApp;
+		core::DirectXApp* dxApp;									// the main DirectX App
+
 		/////////////////////////////////////////////////////////////////////////////////////////
 		////////////////////////////////// GENERAL //////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
 		const std::wstring& keyBindingsFile;						// file with key bindings
+		bool listen;												// listen for any user input
+		
+		// game command used to unmarshalling
+		GameCommand* unmarshalledGameCommand;						// used to load game commands from file
 
 		// polling
 		void update();												// update the active key map
 				
-
 		/////////////////////////////////////////////////////////////////////////////////////////
 		///////////////////////////// KEYBOARD AND MOUSE ////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
@@ -151,10 +164,6 @@ namespace input
 	protected:
 		std::unordered_multimap<GameCommands, GameCommand*> keyMap;		// list of all possible game commands mapped to the appropriate command structure
 		
-		// load and save the game commands
-		void saveGameCommands();
-		void loadGameCommands();
-
 		// constructor and destructor
 		InputHandler(core::DirectXApp* const dxApp, const std::wstring& keyBindingsFile);
 		virtual ~InputHandler();
@@ -162,24 +171,46 @@ namespace input
 		// initialization
 		virtual void setDefaultKeyMap() = 0;						// set up default controls
 
-		// getters and setters
-		util::Expected<std::wstring> getKeyName(const unsigned int keyCode);// retrieves the name of a virtual key code
-
 	public:
 		/////////////////////////////////////////////////////////////////////////////////////////
 		////////////////////////////////// GENERAL //////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
 		std::unordered_map<GameCommands, GameCommand&> activeKeyMap;// list of all active key maps; game acts on each command in this list
+		std::vector<input::BindInfo> newChordBindInfo;				// used to set new chords
 
+		// toggle listening for specificially requested user input
+		void enableListening();
+		void disableListening();
+		void resetKeyStates();
+
+		// game commands
+		void getCommandsMappedToGameAction(const GameCommands gameCommand, std::vector<GameCommand*>&) const;		// used to modify game commands in the UI
+		void getKeysMappedToCommand(const GameCommands gameCommand, std::vector<std::vector<BindInfo> >&) const;	// used to show chords mapped to actions in the UI
+		const util::Expected<std::wstring> getKeyName(const unsigned int keyCode) const;									// retrieves the human readable name of a virtual key code
+
+		// load and store game commands
+		void insertNewCommand(GameCommands gameCommand, GameCommand& command);
+		void saveGameCommands() const;
+		void loadGameCommands();
+
+		// acquire user input
 		void acquireInput();										// reads the state of the game controllers
 		
 		/////////////////////////////////////////////////////////////////////////////////////////
 		///////////////////////////// KEYBOARD AND MOUSE ////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
-		void drawMouseCursor() const;								// draws the mouse cursor
+		
+		// draw the mouse cursor
+		void drawMouseCursor() const;
+
+		// set custom mouse cursor
 		void setMouseCursor(graphics::AnimatedSprite* const mouseCursor) { this->kbm->mouseCursor = mouseCursor; };
-		void changeMouseCursorAnimationCycle(const unsigned int cycle);	
-		void updateMouseCursorAnimation(const double deltaTime);
+		
+		// update the mouse cursor
+		void changeMouseCursorAnimationCycle(const unsigned int cycle) const;
+		void updateMouseCursorAnimation(const double deltaTime) const;
+		
+		// get position of the mouse
 		long getMouseX() const { return kbm->mouseX; };
 		long getMouseY() const { return kbm->mouseY; };
 	};

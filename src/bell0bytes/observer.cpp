@@ -35,13 +35,13 @@ namespace util
 		return { };
 	}
 
-	util::Expected<void> Subject::notify(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) const
+	util::Expected<void> Subject::notify(input::InputHandler* const ih, const bool listening) const
 	{
 		util::Expected<bool> notificationResult = true;
-		
-		for(auto x : observers)
+
+		for (auto x : observers)
 		{
-			notificationResult = x->onNotify(activeKeyMap);
+			notificationResult = x->onNotify(ih, listening);
 			if (!notificationResult.isValid())
 				return notificationResult;
 			else
@@ -51,6 +51,6 @@ namespace util
 		}
 
 		// return success
-		return { };
+		return {};
 	}
 }

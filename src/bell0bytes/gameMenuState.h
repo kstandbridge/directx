@@ -25,20 +25,19 @@ namespace UI
 	class GameMenuState : public core::GameState
 	{
 	private:
-		Microsoft::WRL::ComPtr<IDWriteTextFormat3> gameMenuFormat;
+		Microsoft::WRL::ComPtr<IDWriteTextFormat3> gameMenuFormat;	// dummy text
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> gameMenuLayout;
 
-	protected:
-		GameMenuState(core::DirectXApp* const app, std::wstring name);
+		GameMenuState(core::DirectXApp* const app, const std::wstring& name);
 
 	public:
 		virtual ~GameMenuState();
 
 		// singleton: get instance
-		static GameMenuState& createInstance(core::DirectXApp* const app, std::wstring name);
+		static GameMenuState& createInstance(core::DirectXApp* const app, const std::wstring& name);
 
 		// observer: on notification
-		util::Expected<bool> onNotify(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
+		util::Expected<bool> onNotify(input::InputHandler* const, const bool) override;
 
 		// initialization
 		virtual util::Expected<void> initialize() override;

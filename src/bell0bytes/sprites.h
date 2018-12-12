@@ -114,7 +114,7 @@ namespace graphics
 		~AnimatedSprite();
 
 		// drawing
-		void draw() const;										// the draw functions computes the source and destination rectangle and then calls on the Sprite::draw method to actually draw the AnimatedSprite
+		void draw(const float scaleFactor = 1.0f, const float offsetX = 0.0f, const float offsetY = 0.0f, D2D1_RECT_F* const rect = NULL) const;										// the draw functions computes the source and destination rectangle and then calls on the Sprite::draw method to actually draw the AnimatedSprite
 		void drawCentered(const float scaleFactor = 1.0f, const float offsetX = 0.0f, const float offsetY = 0.0f, D2D1_RECT_F* const rect = NULL) const;
 
 		// update and change

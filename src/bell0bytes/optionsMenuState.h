@@ -4,15 +4,14 @@
 * Author:	Gilles Bellot
 * Date:		14/06/2018 - Lenningen - Luxembourg
 *
-* Desc:		main menu of the game
+* Desc:		main options menu of the game
 *
-* Hist:		- 19/06/2018: fixed a memory leak resulting from creating the same layout multiple times
-*
+* Hist:
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
-// bell0bytes includes
+// bell0bytes include
 #include "states.h"
 
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
@@ -30,36 +29,49 @@ namespace UI
 {
 	class AnimatedButton;
 
-	class MainMenuState : public core::GameState
+	class OptionsMenuState : public core::GameState
 	{
 	private:
-		// title text
-		Microsoft::WRL::ComPtr<IDWriteTextFormat3> mainMenuFormat;
-		Microsoft::WRL::ComPtr<IDWriteTextLayout4> mainMenuLayout;
+		// text formats
+		Microsoft::WRL::ComPtr<IDWriteTextFormat3> titleFormat;
+		Microsoft::WRL::ComPtr<IDWriteTextFormat3> textFormat;
 
+		// text layouts
+		Microsoft::WRL::ComPtr<IDWriteTextLayout4> titleLayout;
+		Microsoft::WRL::ComPtr<IDWriteTextLayout4> fullscreenLayout;
+		Microsoft::WRL::ComPtr<IDWriteTextLayout4> resolutionLayout;
+		
 		// the menu buttons
 		std::deque<AnimatedButton*> menuButtons;
-		unsigned int currentlySelectedButton;
+		int currentlySelectedButton;
 
-		// private constructor -> singleton
-		MainMenuState(core::DirectXApp* const app, const std::wstring& name);
+		// screen resolution options
+		const DXGI_MODE_DESC* supportedModes;
+		unsigned int nSupportedModes;
+		unsigned int currentModeIndex;
 
-		// helper functions
-		util::Expected<void> initializeButtons();				// initialize the menu button graphics
+		// fullscreen options
+		bool wasInFullscreen;
+		bool fullscreen;
 
+		// private constructor
+		OptionsMenuState(core::DirectXApp* const app, const std::wstring& name);
+	
 	public:
-		virtual ~MainMenuState();
+		virtual ~OptionsMenuState();
 
 		// singleton: get instance
-		static MainMenuState& createInstance(core::DirectXApp* const app, const std::wstring& name);
+		static OptionsMenuState& createInstance(core::DirectXApp* const app, const std::wstring& name);
 
-		// observes input
+		// observer: on notification
 		util::Expected<bool> onNotify(input::InputHandler* const, const bool) override;
 
 		// initialization
 		virtual util::Expected<void> initialize() override;
 		virtual util::Expected<void> shutdown() override;
-		
+
+		util::Expected<void> initializeButtons();				// initialize the menu button graphics
+
 		// pause and resume
 		virtual util::Expected<void> pause() override;
 		virtual util::Expected<void> resume() override;

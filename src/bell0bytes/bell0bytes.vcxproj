@@ -150,9 +150,12 @@
     <ClInclude Include="graphicsHelper.h" />
     <ClInclude Include="inputHandler.h" />
     <ClInclude Include="introState.h" />
+    <ClInclude Include="keyMapMenuState.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="mainMenuState.h" />
+    <ClInclude Include="newKeyBindingState.h" />
     <ClInclude Include="observer.h" />
+    <ClInclude Include="optionsMenuState.h" />
     <ClInclude Include="playState.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="serviceLocator.h" />
@@ -171,9 +174,12 @@
     <ClCompile Include="gameMenuState.cpp" />
     <ClCompile Include="inputHandler.cpp" />
     <ClCompile Include="introState.cpp" />
+    <ClCompile Include="keyMapMenuState.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="mainMenuState.cpp" />
+    <ClCompile Include="newKeyBindingState.cpp" />
     <ClCompile Include="observer.cpp" />
+    <ClCompile Include="optionsMenuState.cpp" />
     <ClCompile Include="playState.cpp" />
     <ClCompile Include="serviceLocator.cpp" />
     <ClCompile Include="sprites.cpp" />
@@ -187,6 +193,14 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="Art\Boost.png" />
+    <Image Include="Art\buttonsBack.png" />
+    <Image Include="Art\buttonsGamepad.png" />
+    <Image Include="Art\buttonsLeft.png" />
+    <Image Include="Art\buttonsLeftArrow.png" />
+    <Image Include="Art\buttonsRefresh.png" />
+    <Image Include="Art\buttonsRight.png" />
+    <Image Include="Art\buttonsRightArrow.png" />
+    <Image Include="Art\buttonsSave.png" />
     <Image Include="Art\cursor.png" />
     <Image Include="Art\dx.png" />
     <Image Include="Art\optionsButton.png" />
@@ -211,6 +225,14 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <Xml Include="Art\buttonsBack.xml" />
+    <Xml Include="Art\buttonsGamepad.xml" />
+    <Xml Include="Art\buttonsLeft.xml" />
+    <Xml Include="Art\buttonsLeftArrow.xml" />
+    <Xml Include="Art\buttonsRefresh.xml" />
+    <Xml Include="Art\buttonsRight.xml" />
+    <Xml Include="Art\buttonsRightArrow.xml" />
+    <Xml Include="Art\buttonsSave.xml" />
     <Xml Include="Art\cursor.xml" />
     <Xml Include="Art\optionsButton.xml" />
     <Xml Include="Art\playButton.xml" />

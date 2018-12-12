@@ -81,6 +81,15 @@
     <ClInclude Include="buttons.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="keyMapMenuState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="newKeyBindingState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="optionsMenuState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp">
@@ -137,6 +146,15 @@
     <ClCompile Include="buttons.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="keyMapMenuState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="newKeyBindingState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="optionsMenuState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="bell0tutorial.rc">
@@ -168,6 +186,30 @@
     <Image Include="Art\quitButton.png">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="Art\buttonsBack.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\buttonsGamepad.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\buttonsLeft.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\buttonsLeftArrow.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\buttonsRefresh.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\buttonsRight.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\buttonsRightArrow.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Art\buttonsSave.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="pixelShader.hlsl" />
@@ -179,6 +221,14 @@
     <Xml Include="Art\optionsButton.xml" />
     <Xml Include="Art\playButton.xml" />
     <Xml Include="Art\quitButton.xml" />
+    <Xml Include="Art\buttonsBack.xml" />
+    <Xml Include="Art\buttonsGamepad.xml" />
+    <Xml Include="Art\buttonsLeft.xml" />
+    <Xml Include="Art\buttonsLeftArrow.xml" />
+    <Xml Include="Art\buttonsRefresh.xml" />
+    <Xml Include="Art\buttonsRight.xml" />
+    <Xml Include="Art\buttonsRightArrow.xml" />
+    <Xml Include="Art\buttonsSave.xml" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

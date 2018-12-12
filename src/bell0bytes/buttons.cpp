@@ -17,17 +17,17 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	Button::Button(std::wstring name, graphics::AnimatedSprite* const sprite) : name(name), sprite(sprite), state(ButtonStates::Deselected)
+	AnimatedButton::AnimatedButton(std::wstring name, graphics::AnimatedSprite* const sprite, unsigned int nAnimations) : name(name), sprite(sprite), state(ButtonStates::Deselected), nAnimationCycles(nAnimations)
 	{
 
 	}
 
-	Button::Button(std::wstring name, graphics::AnimatedSprite* const sprite, std::function<bool()> onClick) : name(name), sprite(sprite), onClick(onClick), state(ButtonStates::Deselected)
+	AnimatedButton::AnimatedButton(std::wstring name, graphics::AnimatedSprite* const sprite, std::function<util::Expected<bool>()> onClick, unsigned int nAnimations) : name(name), sprite(sprite), onClick(onClick), state(ButtonStates::Deselected), nAnimationCycles(nAnimations)
 	{
 
 	}
 
-	Button::~Button()
+	AnimatedButton::~AnimatedButton()
 	{
 		onClick = []() { return true; };
 		delete this->sprite;
@@ -36,12 +36,12 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Drawing ///////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void Button::draw()
+	void AnimatedButton::draw(const float scaleFactor, const float offsetX, const float offsetY)
 	{
-		this->sprite->draw();
+		this->sprite->draw(scaleFactor, offsetX, offsetY, &rect);
 	}
 
-	void Button::drawCentered(const float scaleFactor, const float offsetX, const float offsetY)
+	void AnimatedButton::drawCentered(const float scaleFactor, const float offsetX, const float offsetY)
 	{
 		sprite->drawCentered(scaleFactor, offsetX, offsetY, &rect);
 	}
@@ -49,25 +49,37 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Interaction ///////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void Button::select()
+	void AnimatedButton::select()
 	{
 		state = ButtonStates::Selected;
 		sprite->changeAnimation(1);
 	}
 
-	void Button::deselect()
+	void AnimatedButton::deselect()
 	{
 		state = ButtonStates::Deselected;
 		sprite->changeAnimation(0);
 	}
 
-	bool Button::click()
+	util::Expected<bool> AnimatedButton::click()
 	{
+		if (state == ButtonStates::Locked)
+			return true;
+
+		if (nAnimationCycles > 2)
+			sprite->changeAnimation(2);
 		state = ButtonStates::Clicked;
 		return onClick();
 	}
 
-	void Button::setOnClickFunction(std::function<bool()> onClickFunction)
+	void AnimatedButton::lock()
+	{
+		if (nAnimationCycles > 3)
+			sprite->changeAnimation(3);
+		state = ButtonStates::Locked;
+	}
+
+	void AnimatedButton::setOnClickFunction(std::function<util::Expected<bool>()> onClickFunction)
 	{
 		onClick = onClickFunction;
 	}
@@ -75,8 +87,57 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////// Update ///////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void Button::update(const double deltaTime)
+	void AnimatedButton::update(const double deltaTime)
 	{
 		sprite->updateAnimation(deltaTime);
+	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////// Getters and Setters ///////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	void AnimatedButton::setButtonState(ButtonStates buttonState)
+	{
+		switch (buttonState)
+		{
+		case ButtonStates::Deselected:
+			this->deselect();
+			break;
+
+		case ButtonStates::Selected:
+			this->select();
+			break;
+
+		case ButtonStates::Clicked:
+			this->click();
+			break;
+
+		case ButtonStates::Locked:
+			this->lock();
+			break;
+		}
+	}
+
+	void AnimatedButton::setButtonAnimationCycle(ButtonStates buttonState)
+	{
+		switch (buttonState)
+		{
+		case ButtonStates::Deselected:
+			this->deselect();
+			break;
+
+		case ButtonStates::Selected:
+			this->select();
+			break;
+
+		case ButtonStates::Clicked:
+			if (nAnimationCycles > 2)
+				sprite->changeAnimation(2);
+			state = ButtonStates::Clicked;
+			break;
+
+		case ButtonStates::Locked:
+			this->lock();
+			break;
+		}
 	}
 }

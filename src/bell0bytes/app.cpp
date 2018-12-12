@@ -8,19 +8,20 @@
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Pathcch.lib")
 
-// bell0bytes
-
-// core
+// bell0bytes core
 #include "app.h"
+#include "timer.h"
+#include "states.h"
 
-// util
+// bell0bytes util
+#include "expected.h"
+#include "observer.h"
 #include "serviceLocator.h"
 
-// graphics
-#include "d3d.h"
+// bell0bytes graphics
 #include "d2d.h"
 
-// user input
+// bell0bytes input
 #include "inputHandler.h"
 
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
@@ -207,52 +208,67 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Game States //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void DirectXApp::changeGameState(GameState* const gameState)
+	util::Expected<void> DirectXApp::changeGameState(GameState* const gameState)
 	{
 		// delete previous states
 		while (!gameStates.empty())
 		{
-			(*gameStates.rbegin())->shutdown();
+			if (!(*gameStates.rbegin())->shutdown().wasSuccessful())
+				return std::runtime_error("Critical error: Unable to shut the game state down!");
 			gameStates.pop_back();
 		}
 
 		// push and initialize the new game state (if it is not on the stack already)
 		gameStates.push_back(gameState);
-		(*gameStates.rbegin())->initialize();
+		if(!(*gameStates.rbegin())->initialize().wasSuccessful())
+			return std::runtime_error("Critical error: Unable to shut the game state down!");
+
+		// return success
+		return { };
 	}
 
-	void DirectXApp::pushGameState(GameState* const gameState)
+	util::Expected<void> DirectXApp::pushGameState(GameState* const gameState)
 	{
 		// pause the current state
 		if (!gameStates.empty())
-			(*gameStates.rbegin())->pause();
+			if (!(*gameStates.rbegin())->pause().wasSuccessful())
+				return std::runtime_error("Critical error: Unable to pause the game state!");
 
 		// push and initialize the new game state
 		gameStates.push_back(gameState);
-		(*gameStates.rbegin())->initialize();
+		if (!(*gameStates.rbegin())->initialize().wasSuccessful())
+			return std::runtime_error("Critical error: Unable to initialize the game state!");
+
+		// return success
+		return { };
 	}
 
-	void DirectXApp::popGameState()
+	util::Expected<void> DirectXApp::popGameState()
 	{
 		// shut the current state down
 		if (!gameStates.empty()) 
 		{
-			(*gameStates.rbegin())->shutdown();
+			if (!(*gameStates.rbegin())->shutdown().wasSuccessful())
+				return std::runtime_error("Critical error: Unable to shut the game state down!");
 			gameStates.pop_back();
 		}
 
 		// resume previous state
 		if (!gameStates.empty()) {
-			(*gameStates.rbegin())->resume();
+			if (!(*gameStates.rbegin())->resume().wasSuccessful())
+				return std::runtime_error("Critical error: Unable to resume the game state");
 		}
+
+		// return success
+		return { };
 	}
 
-	void DirectXApp::addInputHandlerObserver(GameState* const gameState)
+	void DirectXApp::addInputHandlerObserver(GameState* const gameState) const
 	{
 		ih->addObserver(gameState);
 	}
 
-	void DirectXApp::removeInputHandlerObserver(GameState* const gameState)
+	void DirectXApp::removeInputHandlerObserver(GameState* const gameState) const
 	{
 		ih->removeObserver(gameState);
 	}
@@ -295,6 +311,10 @@ namespace core
 		return { };
 	}
 
+	util::Expected<void> DirectXApp::toggleFullscreen() const
+	{
+		return d3d->toggleFullscreen(d2d);
+	}
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////// Frame Statistics ///////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -320,12 +340,6 @@ namespace core
 				outFPS << "Mode #" << d3d->getCurrentModeIndex()+1 << " of " << d3d->getNumberOfSupportedModes() << std::endl;
 				outFPS << "FPS: " << DirectXApp::fps << std::endl;
 				outFPS << "mSPF: " << DirectXApp::mspf << std::endl;
-				outFPS << std::endl;
-				outFPS << std::endl;
-				outFPS << "States on the Stack: " << gameStates.size() << std::endl;
-				//outFPS << "Active scene: " << gameStates.top()->getStateName() << std::endl;
-				outFPS << "Active scene: " << (*gameStates.rbegin())->getStateName() << std::endl;
-				outFPS << "Active input observers: " << ih->getNumberOfObservers() << std::endl;
 				
 				if (!(d2d->createTextLayoutFPS(&outFPS, (float)d3d->getCurrentWidth(), (float)d3d->getCurrentHeight())).wasSuccessful())
 					return std::runtime_error("Critical error: Failed to create the text layout for FPS information!");
@@ -402,6 +416,50 @@ namespace core
 	{
 		return ih->getMouseY();
 	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////// Key Bindings /////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	void DirectXApp::getKeysMappedToCommand(const input::GameCommands gameCommand, std::vector<std::vector<input::BindInfo> >& map) const
+	{
+		ih->getKeysMappedToCommand(gameCommand, map);
+	}
+
+	void DirectXApp::getCommandsMappedToGameAction(const input::GameCommands gameCommand, std::vector<input::GameCommand*>& commands) const
+	{
+		ih->getCommandsMappedToGameAction(gameCommand, commands);
+	}
+
+	const util::Expected<std::wstring> DirectXApp::getKeyName(const unsigned int keyCode) const
+	{
+		return ih->getKeyName(keyCode);
+	}
+
+	void DirectXApp::saveKeyBindings() const
+	{
+		ih->saveGameCommands();
+	}
+
+	void DirectXApp::loadKeyBindings() const
+	{
+		ih->loadGameCommands();
+	}
+
+	void DirectXApp::enableListeningForInput() const
+	{
+		ih->enableListening();
+	}
+
+	void DirectXApp::disableListeningForInput() const
+	{
+		ih->disableListening();
+	}
+
+	void DirectXApp::addNewCommand(input::GameCommands gameCommand, input::GameCommand& command) const
+	{
+		ih->insertNewCommand(gameCommand, command);
+	}
+	
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Utility Functions ////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -601,5 +659,54 @@ namespace core
 
 		validUserConfigurationFile = true;
 		return true;
+	}
+
+	util::Expected<void> DirectXApp::saveConfiguration(const unsigned int width, const unsigned int height, const unsigned int index, const bool fullscreen) const
+	{
+		// create directory (if it does not exist already)
+		HRESULT hr;
+		hr = SHCreateDirectory(NULL, pathToUserConfigurationFiles.c_str());
+#ifndef NDEBUG
+		if (FAILED(hr))
+			return std::runtime_error("Critical error: unable to get path to 'My Documents' folder!");
+#endif
+		// append name of the log file to the path
+		std::wstring pathToPrefFile = pathToUserConfigurationFiles + L"\\" + userPrefFile; // L"\\bell0prefs.lua";
+
+		  // the directory exists, check if the log file is accessible
+		std::ifstream prefStream(pathToPrefFile.c_str());
+		if (prefStream.good())
+		{
+			// the file exists and can be read
+			try
+			{
+				util::Logger<util::FileLogPolicy> prefFileCreator(pathToPrefFile.c_str());
+				std::stringstream printPref;
+				printPref << "config =\r\n{ \r\n\tfullscreen = " << std::boolalpha << fullscreen << ",\r\n\tresolution = { width = " << width << ", height = " << height << ", index = " << index << " }\r\n}";
+				prefFileCreator.print<util::config>(printPref.str());
+			}
+			catch (std::exception& e)
+			{
+				return e;
+			}
+		}
+		else
+		{
+			// the file does not exist --> create it
+			try
+			{
+				util::Logger<util::FileLogPolicy> prefFileCreator(pathToPrefFile.c_str());
+				std::stringstream printPref;
+				printPref << "config =\r\n{ \r\n\tfullscreen = " << std::boolalpha << fullscreen << ",\r\n\tresolution = { width = " << width << ", height = " << height << ", index = " << index << " }\r\n}";
+				prefFileCreator.print<util::config>(printPref.str());
+			}
+			catch (std::exception& e)
+			{
+				return e;
+			}
+		}
+
+		// return success
+		return { };
 	}
 }
