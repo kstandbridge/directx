@@ -8,6 +8,7 @@
 *
 * Hist:		- 01/06/18: fixed a memory leak in showFPS method (released text format)
 *			- 03/06/18: now observes events from the Window and Direct3D classes
+*			- 21/06/18: changed the state stack to allow overlays
 *
 ****************************************************************************************/
 
@@ -151,6 +152,7 @@ namespace core
 
 		// manage the game states
 		util::Expected<void> changeGameState(GameState* const gameState);	// change game state (deletes all previous states)
+		util::Expected<void> overlayGameState(GameState* const gameState);	// add new game state on top of the existing one; do not pause anything
 		util::Expected<void> pushGameState(GameState* const gameState);		// push new game state and pause current one
 		util::Expected<void> popGameState();								// pop game state and resume previous one
 

@@ -90,6 +90,9 @@
     <ClInclude Include="optionsMenuState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="headsUpDisplayState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp">
@@ -153,6 +156,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="optionsMenuState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="headsUpDisplayState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

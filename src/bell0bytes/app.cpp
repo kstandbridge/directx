@@ -227,12 +227,23 @@ namespace core
 		return { };
 	}
 
+	util::Expected<void> DirectXApp::overlayGameState(GameState* const gameState)
+	{
+		// push new game state
+		gameStates.push_back(gameState);
+		if (!(*gameStates.rbegin())->initialize().wasSuccessful())
+			return std::runtime_error("Critical error: Unable to shut the game state down!");
+
+		// return success
+		return { };
+	}
+
 	util::Expected<void> DirectXApp::pushGameState(GameState* const gameState)
 	{
 		// pause the current state
-		if (!gameStates.empty())
-			if (!(*gameStates.rbegin())->pause().wasSuccessful())
-				return std::runtime_error("Critical error: Unable to pause the game state!");
+		for (std::deque<GameState*>::reverse_iterator it = gameStates.rbegin(); it != gameStates.rend(); it++)
+			if (!(*it)->pause().wasSuccessful())
+				return std::runtime_error("Critical error: Unable to resume the game state");
 
 		// push and initialize the new game state
 		gameStates.push_back(gameState);
@@ -253,15 +264,18 @@ namespace core
 			gameStates.pop_back();
 		}
 
-		// resume previous state
-		if (!gameStates.empty()) {
-			if (!(*gameStates.rbegin())->resume().wasSuccessful())
+		// resume previous states
+		for (std::deque<GameState*>::reverse_iterator it = gameStates.rbegin(); it != gameStates.rend(); it++)
+			if (!(*it)->resume().wasSuccessful())
 				return std::runtime_error("Critical error: Unable to resume the game state");
-		}
 
 		// return success
 		return { };
 	}
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////// Observers ////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
 
 	void DirectXApp::addInputHandlerObserver(GameState* const gameState) const
 	{
