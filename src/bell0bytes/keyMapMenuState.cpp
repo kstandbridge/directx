@@ -421,7 +421,7 @@ namespace UI
 	}
 	util::Expected<void> KeyMapMenuState::addTextToActionTextLayoutList(input::GameCommands gameCommand)
 	{
-		std::wstring text = input::getGameCommandAsString(gameCommand);
+		std::wstring text = input::enumToString(gameCommand);
 				
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> textLayout;
 		util::Expected<void> result = d2d->createTextLayoutFromWString(&text, textFormat.Get(), (float)dxApp->getCurrentWidth(), 100, textLayout);
@@ -583,7 +583,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsBack.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonBack.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickBack = [this]() -> util::Expected<bool>
@@ -595,7 +595,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Back", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickBack, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Back", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickBack, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -651,7 +652,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsLeftArrow.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonLeftArrow.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickLeft = [this]
@@ -662,7 +663,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Left Arrow", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickLeft, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Left Arrow", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickLeft, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -718,7 +720,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsRightArrow.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonRightArrow.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickRight = [this]
@@ -732,7 +734,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Right Arrow", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickRight, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Right Arrow", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickRight, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -803,7 +806,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsGamepad.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonGamepad.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickGamepad = [this]
@@ -814,7 +817,8 @@ namespace UI
 		// add button to the list
 		text = L"Gamepad Button ";
 		text + std::to_wstring(i);
-		menuButtons.push_back(new AnimatedButton(text.c_str(), new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickGamepad, 4));
+		try { menuButtons.push_back(new AnimatedButton(text.c_str(), new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickGamepad, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -838,7 +842,7 @@ namespace UI
 		bool primary = currentlySelectedButton > (int)numberOfGameCommands ? false : true;
 		unsigned int gameCommand = currentlySelectedButton % numberOfGameCommands;
 
-		std::wstring text = input::getGameCommandAsString((input::GameCommands)gameCommand);
+		std::wstring text = input::enumToString((input::GameCommands)gameCommand);
 		
 		// get game commands associated with the selected game action
 		std::vector<input::GameCommand*> commands;

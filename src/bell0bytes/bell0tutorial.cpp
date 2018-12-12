@@ -34,12 +34,17 @@
 *			- 12/06/2018 - boost serialization
 *			- 14/06/2018 - game states
 *			- 21/06/2018 - game options (including new key bindings)
+*			- 21/06/2018 - changed the stack to allow overlays
+*
+* ToDo:		- add physFS support
+*
 ****************************************************************************************/
 
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
 // bell0bytes core
 #include "app.h"
+#include "folders.h"
 
 // bell0ybtes util
 #include "expected.h"							// error handling with "expected"
@@ -242,7 +247,7 @@ void DirectXGame::shutdown(const util::Expected<void>* const expected)
 			if (DirectXApp::fileLoggerIsActive())
 			{
 				std::stringstream errorMessage;
-				errorMessage << "Shutdow! " << e.what();
+				errorMessage << "Shutdown! " << e.what();
 				util::ServiceLocator::getFileLogger()->print<util::SeverityType::error>(std::stringstream(errorMessage.str()));
 			}
 			return;
@@ -394,11 +399,12 @@ util::Expected<void> DirectXGame::createMouseCursor()
 	cursorAnimationsCycles.push_back(cycle);
 
 	// create cursor animations
-	try { cursorAnimations = new graphics::AnimationData(d2d, L"Art/cursor.png", cursorAnimationsCycles); }
-	catch (std::runtime_error& e) { return e; }
+	try { cursorAnimations = new graphics::AnimationData(d2d, openFile(fileSystem::DataFolders::Cursors, L"cursorHand.png").c_str(), cursorAnimationsCycles); }
+	catch (std::exception& e) { return e; }
 
 	// create cursor sprite
-	inputHandler->setMouseCursor(new graphics::AnimatedSprite(d2d, cursorAnimations, 0, 24, 0, 0));
+	try { inputHandler->setMouseCursor(new graphics::AnimatedSprite(d2d, cursorAnimations, 0, 24, 0, 0)); }
+	catch (std::exception& e) { return e; }
 
 	cursorAnimationsCycles.clear();
 	std::vector<graphics::AnimationCycleData>(cursorAnimationsCycles).swap(cursorAnimationsCycles);

@@ -258,8 +258,8 @@ namespace core
 				lua.script_file(util::StringConverter::ws2s(pathToPrefFile));
 
 				// read from the configuration file, default to 200 x 200
-				clientWidth = lua["config"]["resolution"]["width"].get_or(200);
-				clientHeight = lua["config"]["resolution"]["height"].get_or(200);
+				clientWidth = lua["config"]["resolution"]["width"].get_or(1920);
+				clientHeight = lua["config"]["resolution"]["height"].get_or(1080);
 #ifndef NDEBUG
 				std::stringstream res;
 				res << "The client resolution was read from the Lua configuration file: " << clientWidth << " x " << clientHeight << ".";

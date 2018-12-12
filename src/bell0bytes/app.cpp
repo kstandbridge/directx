@@ -210,18 +210,24 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<void> DirectXApp::changeGameState(GameState* const gameState)
 	{
+		// handle errors
+		util::Expected<void> result;
+
 		// delete previous states
 		while (!gameStates.empty())
 		{
-			if (!(*gameStates.rbegin())->shutdown().wasSuccessful())
-				return std::runtime_error("Critical error: Unable to shut the game state down!");
+			result = (*gameStates.rbegin())->shutdown();
+			if (!result.isValid())
+				return result;
+
 			gameStates.pop_back();
 		}
 
 		// push and initialize the new game state (if it is not on the stack already)
 		gameStates.push_back(gameState);
-		if(!(*gameStates.rbegin())->initialize().wasSuccessful())
-			return std::runtime_error("Critical error: Unable to shut the game state down!");
+		result = (*gameStates.rbegin())->initialize();
+		if (!result.isValid())
+			return result;
 
 		// return success
 		return { };
@@ -229,10 +235,14 @@ namespace core
 
 	util::Expected<void> DirectXApp::overlayGameState(GameState* const gameState)
 	{
+		// handle errors
+		util::Expected<void> result;
+
 		// push new game state
 		gameStates.push_back(gameState);
-		if (!(*gameStates.rbegin())->initialize().wasSuccessful())
-			return std::runtime_error("Critical error: Unable to shut the game state down!");
+		result = (*gameStates.rbegin())->initialize();
+		if (!result.isValid())
+			return result;
 
 		// return success
 		return { };
@@ -240,15 +250,22 @@ namespace core
 
 	util::Expected<void> DirectXApp::pushGameState(GameState* const gameState)
 	{
+		// handle errors
+		util::Expected<void> result;
+
 		// pause the current state
 		for (std::deque<GameState*>::reverse_iterator it = gameStates.rbegin(); it != gameStates.rend(); it++)
-			if (!(*it)->pause().wasSuccessful())
-				return std::runtime_error("Critical error: Unable to resume the game state");
+		{
+			result = (*it)->pause();
+			if (!result.isValid())
+				return result;
+		}
 
 		// push and initialize the new game state
 		gameStates.push_back(gameState);
-		if (!(*gameStates.rbegin())->initialize().wasSuccessful())
-			return std::runtime_error("Critical error: Unable to initialize the game state!");
+		result = (*gameStates.rbegin())->initialize();
+		if (!result.isValid())
+			return result;
 
 		// return success
 		return { };
@@ -256,18 +273,25 @@ namespace core
 
 	util::Expected<void> DirectXApp::popGameState()
 	{
+		// handle errors
+		util::Expected<void> result;
+
 		// shut the current state down
 		if (!gameStates.empty()) 
 		{
-			if (!(*gameStates.rbegin())->shutdown().wasSuccessful())
-				return std::runtime_error("Critical error: Unable to shut the game state down!");
+			result = (*gameStates.rbegin())->shutdown();
+			if (!result.isValid())
+				return result;
 			gameStates.pop_back();
 		}
 
 		// resume previous states
 		for (std::deque<GameState*>::reverse_iterator it = gameStates.rbegin(); it != gameStates.rend(); it++)
-			if (!(*it)->resume().wasSuccessful())
-				return std::runtime_error("Critical error: Unable to resume the game state");
+		{
+			result = (*it)->resume();
+			if (!result.isValid())
+				return result;
+		}
 
 		// return success
 		return { };
@@ -475,7 +499,7 @@ namespace core
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////// Utility Functions ////////////////////////////////////////
+	////////////////////////////// Folders //////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
 	bool DirectXApp::getPathToMyDocuments()
 	{
@@ -501,14 +525,35 @@ namespace core
 		// set up log and configuration paths
 		
 		// append custom folder to path
+
+		// log folder
 		std::wstringstream path;
 		path << pathToMyDocuments << L"\\bell0bytes\\bell0tutorials\\Logs";
 		pathToLogFiles = path.str();
 
+		// settings folder
 		path.str(std::wstring());
 		path.clear();
 		path << pathToMyDocuments << L"\\bell0bytes\\bell0tutorials\\Settings";
 		pathToUserConfigurationFiles = path.str();
+
+		// data folder
+		path.str(std::wstring());
+		path.clear();
+		path << pathToMyDocuments << L"\\bell0bytes\\bell0tutorials\\Data";
+		pathToDataFolder = path.str();
+
+		// artwork folder
+		path.str(std::wstring());
+		path.clear();
+		path << pathToDataFolder << L"\\Artwork";
+		pathToArtworkFolder = path.str();
+
+		// music folder
+		path.str(std::wstring());
+		path.clear();
+		path << pathToDataFolder << L"\\Music";
+		pathToMusicFolder = path.str();
 
 		// return success
 		return true;
@@ -722,5 +767,34 @@ namespace core
 
 		// return success
 		return { };
+	}
+
+	const std::wstring DirectXApp::openFile(const fileSystem::DataFolders dataFolder, const std::wstring& filename) const
+	{
+		std::wstringstream file;
+
+		if (dataFolder == fileSystem::DataFolders::Data)
+		{
+			// the file is in the main data folder
+			file << pathToDataFolder << L"\\" << filename;
+
+			return file.str();
+		}
+
+		if (dataFolder < fileSystem::DataFolders::EndFolders)
+		{
+			// the file is in a main folder
+			file << pathToDataFolder << L"\\" << enumToString(dataFolder) << L"\\" << filename;
+			return file.str();
+		}
+		
+		if (dataFolder > fileSystem::DataFolders::EndFolders && dataFolder < fileSystem::DataFolders::EndArtworkSubFolders)
+		{
+			// the file is in an artwork subfolder
+			file << pathToArtworkFolder << L"\\" << enumToString(dataFolder) << L"\\" << filename;
+			return file.str();
+		}
+		
+		return L"Unable to locate file!";
 	}
 }

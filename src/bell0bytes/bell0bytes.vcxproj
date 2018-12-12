@@ -144,6 +144,7 @@
     <ClInclude Include="d2d.h" />
     <ClInclude Include="d3d.h" />
     <ClInclude Include="expected.h" />
+    <ClInclude Include="folders.h" />
     <ClInclude Include="gameCommands.h" />
     <ClInclude Include="gameMenuState.h" />
     <ClInclude Include="gameObjects.h" />
@@ -163,6 +164,7 @@
     <ClInclude Include="sprites.h" />
     <ClInclude Include="states.h" />
     <ClInclude Include="stringConverter.h" />
+    <ClInclude Include="stringifiedEnum.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>

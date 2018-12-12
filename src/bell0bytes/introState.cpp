@@ -23,7 +23,7 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	IntroState::IntroState(core::DirectXApp* const app, const std::wstring& name) : GameState(app, name), frameTime(0.0f), secondsPerLogo(2.0f), showContinueText(true), showTradeMarkLogos(false)
+	IntroState::IntroState(core::DirectXApp* const app, const std::wstring& name) : GameState(app, name), frameTime(0.0f), secondsPerLogo(5.0f), showContinueText(true), showTradeMarkLogos(false)
 	{ }
 
 	IntroState::~IntroState()
@@ -169,8 +169,9 @@ namespace UI
 		else
 		{
 			// print trademark logos of licensed products
-			logos[0]->drawCentered(2);
-			logos[1]->drawCentered(0.5, 1, -200);
+			logos[0]->drawCentered(2, 1, 100);
+			logos[1]->drawCentered(0.5f, 1, -100);
+			logos[2]->drawCentered(0.4f, 700, -280);
 			
 			d2d->printText(0, dxApp->getCurrentHeight() - 200.0f, trademarkLayout.Get());
 			d2d->printText(0, dxApp->getCurrentHeight() - 100.0f, trademarkCountdownLayout.Get());
@@ -263,6 +264,7 @@ namespace UI
 		trademarkText << "bell0bytes tutorial " << (wchar_t)0xA9 << " bell0bytes 2018, all rights reserved - www.bell0bytes.eu" << std::endl;
 		trademarkText << "DirectX 11 " << (wchar_t)0xA9 << " Microsoft 2018" << std::endl;
 		trademarkText << "Boost, distributed under the Boost Software License, Version 1.0." << std::endl;
+		trademarkText << "Lua (with Sol), distributed under the MIT License, Version 5.3.4" << std::endl;
 
 		result = d2d->createTextLayoutFromWStringStream(&trademarkText, trademarkFormat.Get(), (float)dxApp->getCurrentWidth(), 100, trademarkLayout);
 		if (!result.isValid())
@@ -283,12 +285,19 @@ namespace UI
 
 	util::Expected<void> IntroState::initializeLogoSprites()
 	{
-		// the boost logo
-		logos.push_back(new graphics::Sprite(d2d, L"Art/Boost.png"));
+		try
+		{
+			// the boost logo
+			logos.push_back(new graphics::Sprite(d2d, dxApp->openFile(fileSystem::DataFolders::Logos, L"logoBoost.png").c_str()));
+
+			// the DirectX 11 logo
+			logos.push_back(new graphics::Sprite(d2d, dxApp->openFile(fileSystem::DataFolders::Logos, L"logoDX11.png").c_str()));
+
+			// the Lua logo
+			logos.push_back(new graphics::Sprite(d2d, dxApp->openFile(fileSystem::DataFolders::Logos, L"logoLua.png").c_str()));
+		}
+		catch (std::exception&e) { return e; }
 		
-		// the DirectX 11 logo
-		logos.push_back(new graphics::Sprite(d2d, L"Art/dx.png"));
-	
 		// return success
 		return { };
 	}

@@ -14,17 +14,27 @@ namespace graphics
 	Sprite::Sprite(Direct2D* const d2d, LPCWSTR imageFile, const float x, const float y, const Layers layer, const unsigned int drawOrder) : d2d(d2d), x(x), y(y), layer(layer), drawOrder(drawOrder)
 	{
 		d2d->createBitmapFromWICBitmap(imageFile, bitmap);
+
+		if (bitmap == nullptr)
+			throw std::runtime_error("Critical error: bitmap passed to the sprite constructor was a nullptr!");
+
 		size = bitmap->GetSize();
 	}
 
 	Sprite::Sprite(Direct2D* const d2d, ID2D1Bitmap1* const bitmap, const float x, const float y, const Layers layer, const unsigned int drawOrder) : d2d(d2d), bitmap(bitmap), x(x), y(y), layer(layer), drawOrder(drawOrder)
 	{
+		if (bitmap == nullptr)
+			throw std::runtime_error("Critical error: bitmap passed to the Sprite constructor was a nullptr!");
+
 		size = bitmap->GetSize();
 	}
 
 	AnimationData::AnimationData(Direct2D* const d2d, LPCWSTR spriteSheetFile, const std::vector<AnimationCycleData>& cyclesData) : cyclesData(cyclesData)
 	{
 		d2d->createBitmapFromWICBitmap(spriteSheetFile, spriteSheet);
+
+		if (spriteSheet == nullptr)
+			throw std::runtime_error("Critical error: Unable to create sprite sheet from file!");
 	}
 
 	SpriteMap::SpriteMap()

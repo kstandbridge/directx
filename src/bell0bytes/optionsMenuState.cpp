@@ -158,7 +158,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsRefresh.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonRefresh.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClick = [this]
@@ -168,7 +168,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Fullscreen Toggle", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClick, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Fullscreen Toggle", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClick, 4)); }
+		catch (std::exception& e) { return e; };
 
 		// clear animation data
 		animationCycles.clear();
@@ -224,7 +225,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsLeft.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonLeft.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickScreenResolutionLeftArrow = [this]
@@ -235,7 +236,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Screen Resolution Left", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickScreenResolutionLeftArrow, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Screen Resolution Left", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickScreenResolutionLeftArrow, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -291,7 +293,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsRight.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonRight.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickScreenResolutionRightArrow = [this]
@@ -302,7 +304,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Screen Resolution Right", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickScreenResolutionRightArrow, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Screen Resolution Right", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickScreenResolutionRightArrow, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -358,7 +361,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsGamepad.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonGamepad.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickGamepad = [this]() -> util::Expected<bool>
@@ -370,7 +373,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Gamepad", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickGamepad, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Gamepad", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickGamepad, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -426,7 +430,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsSave.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonSave.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickSave = [this]
@@ -448,7 +452,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Save", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickSave, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Save", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickSave, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -504,7 +509,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsBack.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonBack.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickBack = [this]() -> util::Expected<bool>
@@ -516,7 +521,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Back", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickBack, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Back", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickBack, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -547,6 +553,7 @@ namespace UI
 		dxApp->activeKeyboard = false;
 
 		isPaused = false;
+		currentlySelectedButton = -1;
 
 		// return success
 		return {};

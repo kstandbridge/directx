@@ -115,7 +115,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/playButton.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonPlay.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		// set lambda function
@@ -127,7 +127,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Play Button", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClick));
+		try{ menuButtons.push_back(new AnimatedButton(L"Play Button", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClick));}
+		catch (std::exception&e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -160,7 +161,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/optionsButton.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonOptions.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		// set lambda function
@@ -172,7 +173,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Options", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickOptions));
+		try { menuButtons.push_back(new AnimatedButton(L"Options", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickOptions)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -205,7 +207,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/quitButton.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonQuit.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		// set lambda function
@@ -218,7 +220,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Quit Button", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickQuit));
+		try { menuButtons.push_back(new AnimatedButton(L"Quit Button", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickQuit)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();

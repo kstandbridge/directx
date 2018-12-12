@@ -93,6 +93,12 @@
     <ClInclude Include="headsUpDisplayState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="folders.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stringifiedEnum.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp">

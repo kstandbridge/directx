@@ -147,7 +147,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsSave.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonSave.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickSave = [this]() -> util::Expected<bool>
@@ -160,7 +160,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Save", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickSave, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Save", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickSave, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -216,7 +217,7 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, L"Art/buttonsBack.png", animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonBack.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		auto onClickBack = [this]() -> util::Expected<bool>
@@ -228,7 +229,8 @@ namespace UI
 		};
 
 		// add button to the list
-		menuButtons.push_back(new AnimatedButton(L"Back", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickBack, 4));
+		try { menuButtons.push_back(new AnimatedButton(L"Back", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickBack, 4)); }
+		catch (std::exception& e) { return e; }
 
 		// clear animation data
 		animationCycles.clear();
@@ -521,7 +523,7 @@ namespace UI
 				return result;
 		}
 
-		std::wstring text = input::getGameCommandAsString(gameCommand);
+		std::wstring text = input::enumToString(gameCommand);
 
 		std::wostringstream eventText;
 		eventText << L"for" << std::endl << text.c_str();

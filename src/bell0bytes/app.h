@@ -19,6 +19,7 @@
 
 // bell0bytes core
 #include "window.h"
+#include "folders.h"
 
 // bell0bytes input
 #include "gameCommands.h"
@@ -60,6 +61,9 @@ namespace core
 		std::wstring pathToMyDocuments;				// path to the My Documents folder
 		std::wstring pathToLogFiles;				// path to the folder containing log files
 		std::wstring pathToUserConfigurationFiles;	// path to the folder containing the configuration files visible to the user
+		std::wstring pathToDataFolder;				// path to the main data folder
+		std::wstring pathToArtworkFolder;			// path to the main artwork folder
+		std::wstring pathToMusicFolder;				// path to the main music folder
 
 		// folder paths (application)
 		std::wstring pathToLocalAppData;		// data bound to the user, the machine and the application (FOLDERID_LocalAppData)
@@ -185,6 +189,9 @@ namespace core
 		const std::wstring& getPrefsFile() const { return userPrefFile; };
 		bool hasValidConfigurationFile() const { return validUserConfigurationFile; };
 		bool fileLoggerIsActive() const { return activeFileLogger; };
+
+		// open file
+		const std::wstring openFile(const fileSystem::DataFolders, const std::wstring&) const;
 
 		// booleans
 		bool showFramesPerSecond() const { return showFPS; };

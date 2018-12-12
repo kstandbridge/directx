@@ -37,6 +37,7 @@ namespace graphics
 		if (!createDeviceDependentResources().wasSuccessful())
 			throw std::runtime_error("Critical error: Failed to create device dependent Direct2D resoures!");
 
+
 		// log success
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Direct2D was successfully initialized.");
 	}
