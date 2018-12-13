@@ -14,6 +14,10 @@
 // bell0bytes core
 #include "states.h"
 
+#include <wrl.h>
+#include <dwrite_3.h>
+#include <d2d1_3.h>
+
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
 namespace core
 {
@@ -23,6 +27,11 @@ namespace core
 namespace graphics
 {
 	class AnimatedSprite;
+}
+
+namespace audio
+{
+	struct SoundEvent;
 }
 
 namespace UI
@@ -54,6 +63,7 @@ namespace UI
 		// the menu buttons
 		std::deque<AnimatedButton*> menuButtons;
 		int currentlySelectedButton;
+		audio::SoundEvent* buttonClickSound;
 
 		// current key binding and game action
 		input::GameCommands gameCommand;				// the game action, i.e. "back", "select", ...
@@ -74,18 +84,15 @@ namespace UI
 
 	protected:
 		// overload constructor to get the game command object to change
-		NewKeyBindingState(core::DirectXApp* const app, std::wstring name);
-		NewKeyBindingState(core::DirectXApp* const app, std::wstring name, input::GameCommands, std::wstring oldKeyBinding, input::GameCommand* = NULL);
+		NewKeyBindingState(core::DirectXApp& app, std::wstring name);
+		NewKeyBindingState(core::DirectXApp& app, std::wstring name, input::GameCommands, std::wstring oldKeyBinding, input::GameCommand* = NULL);
 
 	public:
 		virtual ~NewKeyBindingState();
 
 		// singleton: get instance
-		static NewKeyBindingState& createInstance(core::DirectXApp* const app, std::wstring name);
+		static NewKeyBindingState& createInstance(core::DirectXApp& app, std::wstring name);
 		
-		// observer: on notification
-		util::Expected<bool> onNotify(input::InputHandler* const, const bool) override;
-
 		// initialization
 		virtual util::Expected<void> initialize() override;
 		virtual util::Expected<void> shutdown() override;
@@ -97,7 +104,7 @@ namespace UI
 		virtual util::Expected<void> resume() override;
 
 		// user input
-		virtual util::Expected<bool> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
+		virtual util::Expected<void> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
 		virtual util::Expected<void> update(const double deltaTime) override;
 
 		// render the scene
@@ -107,5 +114,8 @@ namespace UI
 		void setOldKeyBindingString(std::wstring oldKeyBindingString) { this->oldKeyBinding = oldKeyBindingString; };
 		void setGameCommand(input::GameCommands gc) { this->gameCommand = gc; };
 		void setCommandToChange(input::GameCommand* command) { this->commandToChange = command; };
+
+		// handle message
+		virtual util::Expected<void> onMessage(const core::Depesche&) override;
 	};
 }

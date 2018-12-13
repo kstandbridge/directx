@@ -1,5 +1,7 @@
 #include "observer.h"
 
+#include "expected.h"
+
 namespace util
 {
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -33,24 +35,5 @@ namespace util
 		}
 
 		return { };
-	}
-
-	util::Expected<void> Subject::notify(input::InputHandler* const ih, const bool listening) const
-	{
-		util::Expected<bool> notificationResult = true;
-
-		for (auto x : observers)
-		{
-			notificationResult = x->onNotify(ih, listening);
-			if (!notificationResult.isValid())
-				return notificationResult;
-			else
-				if (!notificationResult.get())
-					// the game state has changed -> break
-					break;
-		}
-
-		// return success
-		return {};
 	}
 }

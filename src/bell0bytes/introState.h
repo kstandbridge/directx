@@ -14,6 +14,9 @@
 // bell0bytes core
 #include "states.h"
 
+#include <dwrite_3.h>
+#include <wrl.h>
+
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
 namespace core
 {
@@ -22,7 +25,12 @@ namespace core
 
 namespace graphics
 {
-	class Sprites;
+	class Sprite;
+}
+
+namespace audio
+{
+	struct SoundEvent;
 }
 
 namespace UI
@@ -48,6 +56,9 @@ namespace UI
 		// logos
 		std::vector<graphics::Sprite*> logos;
 
+		// intro music
+		audio::SoundEvent* introMusic;
+
 		// calculate frame time
 		double frameTime;
 		double secondsPerLogo;
@@ -67,16 +78,13 @@ namespace UI
 		util::Expected<void> initializeLogoSprites();
 
 	protected:
-		IntroState(core::DirectXApp* const app, const std::wstring& name);
+		IntroState(core::DirectXApp& app, const std::wstring& name);
 
 	public:
 		virtual ~IntroState();
 
 		// singleton: get instance
-		static IntroState& createInstance(core::DirectXApp* const app, const std::wstring& name);
-
-		// observer: on notification
-		util::Expected<bool> onNotify(input::InputHandler* const ih, const bool listening) override;
+		static IntroState& createInstance( core::DirectXApp& app, const std::wstring& name);
 
 		// initialization
 		virtual util::Expected<void> initialize() override;
@@ -87,10 +95,13 @@ namespace UI
 		virtual util::Expected<void> resume() override;
 
 		// user input
-		virtual util::Expected<bool> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
+		virtual util::Expected<void> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
 		virtual util::Expected<void> update(const double deltaTime) override;
 
 		// render the scene
 		virtual util::Expected<void> render(const double farSeer) override;
+
+		// handle message
+		virtual util::Expected<void> onMessage(const core::Depesche&) override;
 	};
 }

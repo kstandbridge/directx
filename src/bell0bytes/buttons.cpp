@@ -22,7 +22,7 @@ namespace UI
 
 	}
 
-	AnimatedButton::AnimatedButton(std::wstring name, graphics::AnimatedSprite* const sprite, std::function<util::Expected<bool>()> onClick, unsigned int nAnimations) : name(name), sprite(sprite), onClick(onClick), state(ButtonStates::Deselected), nAnimationCycles(nAnimations)
+	AnimatedButton::AnimatedButton(std::wstring name, graphics::AnimatedSprite* const sprite, std::function<util::Expected<void>()> onClick, unsigned int nAnimations) : name(name), sprite(sprite), onClick(onClick), state(ButtonStates::Deselected), nAnimationCycles(nAnimations)
 	{
 
 	}
@@ -61,10 +61,10 @@ namespace UI
 		sprite->changeAnimation(0);
 	}
 
-	util::Expected<bool> AnimatedButton::click()
+	util::Expected<void> AnimatedButton::click()
 	{
 		if (state == ButtonStates::Locked)
-			return true;
+			return { };
 
 		if (nAnimationCycles > 2)
 			sprite->changeAnimation(2);
@@ -79,7 +79,7 @@ namespace UI
 		state = ButtonStates::Locked;
 	}
 
-	void AnimatedButton::setOnClickFunction(std::function<util::Expected<bool>()> onClickFunction)
+	void AnimatedButton::setOnClickFunction(std::function<util::Expected<void>()> onClickFunction)
 	{
 		onClick = onClickFunction;
 	}

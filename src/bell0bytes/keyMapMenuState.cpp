@@ -13,11 +13,22 @@
 #include "buttons.h"
 
 // bell0bytes graphics
+#include "graphicsComponent.h"
+#include "graphicsComponent2D.h"
+#include "graphicsComponentWrite.h"
+#include "d2d.h"
 #include "sprites.h"
 
 // bell0bytes input
 #include "gameCommands.h"
+#include "inputComponent.h"
 #include "inputHandler.h"
+
+// bell0bytes file system
+#include "fileSystemComponent.h"
+
+// bell0bytes audi
+#include "audioComponent.h"
 
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace UI
@@ -25,13 +36,13 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	KeyMapMenuState::KeyMapMenuState(core::DirectXApp* const app, const std::wstring& name) : GameState(app, name), currentlySelectedButton(0), currentPage(0), keyBindingsPerPage(5)
+	KeyMapMenuState::KeyMapMenuState(core::DirectXApp& app, const std::wstring& name) : GameState(app, name), currentlySelectedButton(0), currentPage(0), keyBindingsPerPage(5)
 	{ }
 
 	KeyMapMenuState::~KeyMapMenuState()
 	{ }
 
-	KeyMapMenuState& KeyMapMenuState::createInstance(core::DirectXApp* const app, const std::wstring& stateName)
+	KeyMapMenuState& KeyMapMenuState::createInstance(core::DirectXApp& app, const std::wstring& stateName)
 	{
 		static KeyMapMenuState instance(app, stateName);
 		return instance;
@@ -45,24 +56,21 @@ namespace UI
 		// handle errors
 		util::Expected<void> result;
 		
-		// add to observer list of the input handler
-		dxApp->addInputHandlerObserver(this);
-
 		// position mouse at the center of the screen
-		if (!SetCursorPos(dxApp->getCurrentWidth() / 2, dxApp->getCurrentHeight() / 2))
+		if (!SetCursorPos(dxApp.getGraphicsComponent().getCurrentWidth() / 2, dxApp.getGraphicsComponent().getCurrentHeight() / 2))
 			return std::runtime_error("Critical error: Unable to set cursor position!");
 
 		// hide the standard cursor
 		ShowCursor(false);
 
 		// allow mouse input
-		dxApp->activeMouse = true;
-		dxApp->activeKeyboard = false;
+		dxApp.getInputComponent().getInputHandler().activeMouse = true;
+		dxApp.getInputComponent().getInputHandler().activeKeyboard = false;
 
 		if (firstCreation)
 		{
 			// create brush
-			d2d->createSolidColourBrush(D2D1::ColorF::WhiteSmoke, whiteBrush);
+			d2d.createSolidColourBrush(D2D1::ColorF::WhiteSmoke, whiteBrush);
 
 			// create text formats
 			if (!createTextFormats().wasSuccessful())
@@ -74,20 +82,32 @@ namespace UI
 
 			// create action text layouts
 			for (unsigned int i = input::GameCommands::Select; i < input::GameCommands::nGameCommands; i++)
+			{
 				if (!addTextToActionTextLayoutList((input::GameCommands)i).wasSuccessful())
 					return std::runtime_error("Critical error: Unable to create header action text layouts!");
+			}
 		}
 		
 		// create primary key bindings layout
 		for (int i = input::GameCommands::Select; i < input::GameCommands::nGameCommands; i++)
-			if(!addKeyBindingToLayoutList(0, (input::GameCommands)i).wasSuccessful())
+		{
+			if (!addKeyBindingToLayoutList(0, (input::GameCommands)i).wasSuccessful())
 				return std::runtime_error("Critical error: Unable to create primary key bindings layouts!");
+		}
 
 		// create secondary key bindings layout
 		for (int i = input::GameCommands::Select; i < input::GameCommands::nGameCommands; i++)
-			if(!addKeyBindingToLayoutList(1, (input::GameCommands)i).wasSuccessful())
+		{
+			if (!addKeyBindingToLayoutList(1, (input::GameCommands)i).wasSuccessful())
 				return std::runtime_error("Critical error: Unable to create secondary key bindings layouts!");
-		
+		}
+
+		// load button sound
+		buttonClickSound = new audio::SoundEvent();
+		result = dxApp.getAudioComponent().loadFile(dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Sounds, L"button.wav"), *buttonClickSound, audio::AudioTypes::Sound);
+		if (!result.isValid())
+			return result;
+
 		// initialize buttons
 		currentlySelectedButton = -1;
 		if (!initializeButtons().wasSuccessful())
@@ -121,11 +141,11 @@ namespace UI
 		this->currentlySelectedButton = -1;
 
 		// allow mouse input
-		dxApp->activeMouse = true;
-		dxApp->activeKeyboard = false;
-		
+		dxApp.getInputComponent().getInputHandler().activeMouse = true;
+		dxApp.getInputComponent().getInputHandler().activeKeyboard = false;
+
 		// recreate key binding layouts
-		dxApp->loadKeyBindings();
+		dxApp.getInputComponent().getInputHandler().loadGameCommands();
 		recreateLayouts();
 		
 		isPaused = false;
@@ -137,17 +157,19 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// User Input //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<bool> KeyMapMenuState::onNotify(input::InputHandler* const ih, const bool listening)
+	util::Expected<void> KeyMapMenuState::onMessage(const core::Depesche& depesche)
 	{
+		input::InputHandler* ih = (input::InputHandler*)depesche.sender;
+
 		if (!isPaused)
-			if(!listening)
+			if (!ih->isListening())
 				return handleInput(ih->activeKeyMap);
 
 		// return success
-		return true;
+		return { };
 	}
 
-	util::Expected<bool> KeyMapMenuState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
+	util::Expected<void> KeyMapMenuState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
 	{
 		// act on user input
 		for (auto x : activeKeyMap)
@@ -162,12 +184,12 @@ namespace UI
 					break;
 
 			case input::ShowFPS:
-				dxApp->toggleFPS();
+				dxApp.toggleFPS();
 				break;
 			}
 		}
 
-		return true;
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -185,11 +207,11 @@ namespace UI
 		unsigned int numberOfGameCommands = input::GameCommands::nGameCommands;
 
 		// capture mouse
-		if (dxApp->activeMouse)
+		if (dxApp.getInputComponent().getInputHandler().activeMouse)
 		{
 			// get mouse position
-			long mouseX = dxApp->getMouseX();
-			long mouseY = dxApp->getMouseY();
+			long mouseX = dxApp.getInputComponent().getInputHandler().getMouseX();
+			long mouseY = dxApp.getInputComponent().getInputHandler().getMouseY();
 
 			// check if mouse position is inside button rectangle
 			bool buttonSelected = false;
@@ -232,7 +254,7 @@ namespace UI
 		if (currentPage == 0)
 			menuButtons[2*numberOfGameCommands+1]->lock();
 
-		menuButtons[0]->lock();
+		//menuButtons[0]->lock();
 		menuButtons[numberOfGameCommands]->lock();
 		menuButtons[1]->lock();
 		menuButtons[2]->lock();
@@ -258,14 +280,14 @@ namespace UI
 		if (!isPaused)
 		{
 			// fill rectangle
-			d2d->fillRoundedRectangle(50, 50, 1870, 650, 45, 45, 1.0f, whiteBrush.Get());
-			d2d->drawRoundedRectangle(50, 50, 1870, 650, 45, 45);
-			d2d->printText(0, 50, titleLayout.Get());
+			dxApp.getGraphicsComponent().get2DComponent().fillRoundedRectangle(50, 50, 1870, 650, 45, 45, 1.0f, whiteBrush.Get());
+			dxApp.getGraphicsComponent().get2DComponent().drawRoundedRectangle(50, 50, 1870, 650, 45, 45);
+			dxApp.getGraphicsComponent().getWriteComponent().printText(0, 50, titleLayout.Get());
 
 			// print header
-			d2d->printText((float)165, (float)150, headerTextLayouts[0].Get());
-			d2d->printText((float)765, (float)150, headerTextLayouts[1].Get());
-			d2d->printText((float)1455, (float)150, headerTextLayouts[2].Get());
+			dxApp.getGraphicsComponent().getWriteComponent().printText((float)165, (float)150, headerTextLayouts[0].Get());
+			dxApp.getGraphicsComponent().getWriteComponent().printText((float)765, (float)150, headerTextLayouts[1].Get());
+			dxApp.getGraphicsComponent().getWriteComponent().printText((float)1455, (float)150, headerTextLayouts[2].Get());
 
 			// draw map texts
 			unsigned int offset = 0;
@@ -277,22 +299,22 @@ namespace UI
 				offset = i % keyBindingsPerPage;
 
 				// print action texts
-				d2d->printText((float)65, (float)225 + offset * 75, actionTextLayouts[i].Get());
+				dxApp.getGraphicsComponent().getWriteComponent().printText((float)65, (float)225 + offset * 75, actionTextLayouts[i].Get());
 
 				// print primary key bindings
-				d2d->printText((float)765, (float)225 + offset * 75, keyBindings1TextLayouts[i].Get());
+				dxApp.getGraphicsComponent().getWriteComponent().printText((float)765, (float)225 + offset * 75, keyBindings1TextLayouts[i].Get());
 
 				// draw primary key binding gamepad button
 				menuButtons[i]->draw(1, (float)700, (float)262 + offset * 75);
 
 				// print secondary key bindings
-				d2d->printText((float)1365, (float)225 + offset * 75, keyBindings2TextLayouts[i].Get());
+				dxApp.getGraphicsComponent().getWriteComponent().printText((float)1365, (float)225 + offset * 75, keyBindings2TextLayouts[i].Get());
 
 				// draw secondary key binding gamepad buttons
 				menuButtons[i + numberOfGameCommands]->draw(1, (float)1300, (float)262 + offset * 75);
 
 				// draw horizontal lines
-				d2d->drawRectangle(50, (float)225 + (offset + 1) * 75, 1870, (float)225 + (offset + 1) * 75);
+				dxApp.getGraphicsComponent().get2DComponent().drawRectangle(50, (float)225 + (offset + 1) * 75, 1870, (float)225 + (offset + 1) * 75);
 			}
 		}
 
@@ -305,7 +327,7 @@ namespace UI
 		}
 
 		// print FPS information
-		d2d->printFPS();
+		dxApp.getGraphicsComponent().getWriteComponent().printFPS();
 
 		// return success
 		return {};
@@ -321,16 +343,20 @@ namespace UI
 		ShowCursor(false);
 		this->isPaused = true;
 
+		// stop button sound
+		dxApp.getAudioComponent().stopSoundEvent(*buttonClickSound);
+
 		// delete buttons
 		for (auto button : menuButtons)
 			delete button;
 		menuButtons.clear();
 
+		// delete button sound
+		if (buttonClickSound)
+			delete buttonClickSound;
+
 		// release and clear layouts
 		releaseAndClearLayouts();
-
-		// remove from the observer list
-		dxApp->removeInputHandlerObserver(this);
 
 		// return success
 		return {};
@@ -352,7 +378,7 @@ namespace UI
 
 		// get keys that are actually mapped to the specified command
 		std::vector<std::vector<input::BindInfo> > vecBI;
-		dxApp->getKeysMappedToCommand(gameCommand, vecBI);
+		dxApp.getInputComponent().getInputHandler().getKeysMappedToCommand(gameCommand, vecBI);
 		
 		if (i == 0)
 		{
@@ -362,7 +388,7 @@ namespace UI
 			{
 				for (unsigned int j=0; j<vecBI[i].size(); j++)
 				{
-					util::Expected<std::wstring> keyName(dxApp->getKeyName(vecBI[i][j].getKeyCode()));
+					util::Expected<std::wstring> keyName(dxApp.getInputComponent().getInputHandler().getKeyName(vecBI[i][j].getKeyCode()));
 					if (keyName.isValid())
 					{
 						if (j != vecBI[i].size() - 1)
@@ -385,7 +411,7 @@ namespace UI
 			{
 				for (unsigned int j = 0; j<vecBI[i].size(); j++)
 				{
-					util::Expected<std::wstring> keyName(dxApp->getKeyName(vecBI[i][j].getKeyCode()));
+					util::Expected<std::wstring> keyName(dxApp.getInputComponent().getInputHandler().getKeyName(vecBI[i][j].getKeyCode()));
 					if (keyName.isValid())
 					{
 						if (j != vecBI[i].size() - 1)
@@ -394,14 +420,17 @@ namespace UI
 							keyBindingText << keyName.get();
 					}
 					else
+					{
+						dxApp.getInputComponent().getInputHandler().getKeyName(vecBI[i][j].getKeyCode());
 						return std::runtime_error("Critical error: Failed to get key name!");
+					}
 				}
 				if (keyBindingText.str() == L"")
 					keyBindingText << "not bound";
 			}
 		}
 
-		util::Expected<void> result = d2d->createTextLayoutFromWStringStream(&keyBindingText, textFormat.Get(), (float)dxApp->getCurrentWidth(), 100, textLayout);
+		util::Expected<void> result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(keyBindingText, textFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, textLayout);
 		if (!result.isValid())
 			return result;
 
@@ -424,7 +453,7 @@ namespace UI
 		std::wstring text = input::enumToString(gameCommand);
 				
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> textLayout;
-		util::Expected<void> result = d2d->createTextLayoutFromWString(&text, textFormat.Get(), (float)dxApp->getCurrentWidth(), 100, textLayout);
+		util::Expected<void> result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(text, textFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, textLayout);
 		if (!result.isValid())
 			return result;
 		actionTextLayouts.push_back(textLayout);
@@ -436,15 +465,15 @@ namespace UI
 	{
 		util::Expected<void> result;
 
-		result = d2d->createTextFormat(L"Lucida Handwriting", 92.0f, DWRITE_TEXT_ALIGNMENT_CENTER, titleFormat);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Lucida Handwriting", 92.0f, DWRITE_TEXT_ALIGNMENT_CENTER, titleFormat);
 		if (!result.isValid())
 			return result;
 
-		result = d2d->createTextFormat(L"Segoe Script", 32.0f, headerFormat);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Segoe Script", 32.0f, headerFormat);
 		if (!result.isValid())
 			return result;
 
-		result = d2d->createTextFormat(L"Segoe Script", 48.0f, textFormat);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Segoe Script", 48.0f, textFormat);
 		if (!result.isValid())
 			return result;
 
@@ -457,26 +486,26 @@ namespace UI
 
 		// create title layout
 		std::wstring title = L"Key Bindings";
-		result = d2d->createTextLayoutFromWString(&title, titleFormat.Get(), (float)dxApp->getCurrentWidth(), 100, titleLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(title, titleFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, titleLayout);
 		if (!result.isValid())
 			return result;
 
 		// create header text layout
 		std::wstring header = L"Action";
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> headerLayout;
-		result = d2d->createTextLayoutFromWString(&header, headerFormat.Get(), 500, 100, headerLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(header, headerFormat.Get(), 500, 100, headerLayout);
 		if (!result.isValid())
 			return result;
 		headerTextLayouts.push_back(headerLayout);
 
 		header = L"Primary Key Binding";
-		result = d2d->createTextLayoutFromWString(&header, headerFormat.Get(), (float)dxApp->getCurrentWidth(), 100, headerLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(header, headerFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, headerLayout);
 		if (!result.isValid())
 			return result;
 		headerTextLayouts.push_back(headerLayout);
 
 		header = L"Secondary Key Binding";
-		result = d2d->createTextLayoutFromWString(&header, headerFormat.Get(), (float)dxApp->getCurrentWidth(), 100, headerLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(header, headerFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, headerLayout);
 		if (!result.isValid())
 			return result;
 		headerTextLayouts.push_back(headerLayout);
@@ -583,15 +612,18 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonBack.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonBack.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
-		auto onClickBack = [this]() -> util::Expected<bool>
+		auto onClickBack = [this]() -> util::Expected<void>
 		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
 			this->isPaused = true;
-			if(!dxApp->popGameState().wasSuccessful())
+			if(!dxApp.popGameState().wasSuccessful())
 				return std::runtime_error("Critical error: Unable to pop the key map menu!");
-			return false;
+			return { };
 		};
 
 		// add button to the list
@@ -652,14 +684,17 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonLeftArrow.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonLeftArrow.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
-		auto onClickLeft = [this]
+		auto onClickLeft = [this]() -> util::Expected<void>
 		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
 			if (currentPage > 0)
 				this->currentPage--;
-			return true;
+			return { };
 		};
 
 		// add button to the list
@@ -720,17 +755,20 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonRightArrow.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonRightArrow.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
-		auto onClickRight = [this]
+		auto onClickRight = [this]() -> util::Expected<void>
 		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
 			unsigned int n = 0;
 			for (unsigned int i = 0; i < currentPage + 1; i++)
 				n += keyBindingsPerPage;
 			if (n < actionTextLayouts.size())
 				currentPage++;
-			return true;
+			return { };
 		};
 
 		// add button to the list
@@ -806,11 +844,14 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonGamepad.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonGamepad.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
-		auto onClickGamepad = [this]
+		auto onClickGamepad = [this]() -> util::Expected<void>
 		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
 			return this->changeKeyBinding();
 		};
 
@@ -829,7 +870,7 @@ namespace UI
 	}
 
 	// change key bindings
-	util::Expected<bool> KeyMapMenuState::changeKeyBinding()
+	util::Expected<void> KeyMapMenuState::changeKeyBinding()
 	{
 		UI::NewKeyBindingState* bindNewKey = &UI::NewKeyBindingState::createInstance(dxApp, L"New Key Binding");
 
@@ -846,7 +887,7 @@ namespace UI
 		
 		// get game commands associated with the selected game action
 		std::vector<input::GameCommand*> commands;
-		dxApp->getCommandsMappedToGameAction((input::GameCommands)gameCommand, commands);
+		dxApp.getInputComponent().getInputHandler().getCommandsMappedToGameAction((input::GameCommands)gameCommand, commands);
 		
 		// get command (primary or secondary)
 		if (primary)
@@ -858,17 +899,17 @@ namespace UI
 				bindNewKey->setCommandToChange(commands[0]);
 				bindNewKey->setOldKeyBindingString(keyBindings1Texts[gameCommand]);
 				bindNewKey->setGameCommand((input::GameCommands)gameCommand);
-				dxApp->pushGameState(bindNewKey);
+				dxApp.pushGameState(bindNewKey);
 			}
 			else
 			{
 				// the command does not exist -> create a new one
 				input::GameCommand* gc = new input::GameCommand(text);
-				dxApp->addNewCommand((input::GameCommands)gameCommand, *gc);
+				dxApp.getInputComponent().getInputHandler().insertNewCommand((input::GameCommands)gameCommand, *gc);
 				bindNewKey->setCommandToChange(gc);
 				bindNewKey->setOldKeyBindingString(L"not bound");
 				bindNewKey->setGameCommand((input::GameCommands)gameCommand);
-				dxApp->pushGameState(bindNewKey);
+				dxApp.pushGameState(bindNewKey);
 			}
 		}
 		else
@@ -880,19 +921,19 @@ namespace UI
 				bindNewKey->setCommandToChange(commands[1]);
 				bindNewKey->setOldKeyBindingString(keyBindings1Texts[gameCommand]);
 				bindNewKey->setGameCommand((input::GameCommands)gameCommand);
-				dxApp->pushGameState(bindNewKey);
+				dxApp.pushGameState(bindNewKey);
 			}
 			else
 			{
 				// the command does not exist -> create it
 				input::GameCommand* gc = new input::GameCommand(text);
-				dxApp->addNewCommand((input::GameCommands)gameCommand, *gc);
+				dxApp.getInputComponent().getInputHandler().insertNewCommand((input::GameCommands)gameCommand, *gc);
 				bindNewKey->setCommandToChange(gc);
 				bindNewKey->setOldKeyBindingString(L"not bound");
 				bindNewKey->setGameCommand((input::GameCommands)gameCommand);
-				dxApp->pushGameState(bindNewKey);
+				dxApp.pushGameState(bindNewKey);
 			}
 		}
-		return true;
+		return { };
 	}
 }

@@ -12,10 +12,19 @@
 
 // bell0bytes input
 #include "gameCommands.h"		// all possible game commands
+#include "inputComponent.h"
 #include "inputHandler.h"		// the input handler
 
 // bell0bytes graphics
+#include "graphicsComponent.h"
+#include "graphicsComponentWrite.h"
 #include "sprites.h"			// sprites for the logos
+
+// bell0bytes file system
+#include "fileSystemComponent.h"
+
+// bell0bytes audio system
+#include "audioComponent.h"
 
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace UI
@@ -23,13 +32,13 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	IntroState::IntroState(core::DirectXApp* const app, const std::wstring& name) : GameState(app, name), frameTime(0.0f), secondsPerLogo(5.0f), showContinueText(true), showTradeMarkLogos(false)
+	IntroState::IntroState(core::DirectXApp& app, const std::wstring& name) : GameState(app, name), frameTime(0.0f), secondsPerLogo(1.0f), showContinueText(true), showTradeMarkLogos(false)
 	{ }
 
 	IntroState::~IntroState()
 	{ }
 
-	IntroState& IntroState::createInstance(core::DirectXApp* const app, const std::wstring& stateName)
+	IntroState& IntroState::createInstance(core::DirectXApp& app, const std::wstring& stateName)
 	{
 		static IntroState instance(app, stateName);
 		return instance;
@@ -43,15 +52,12 @@ namespace UI
 		// handle errors
 		util::Expected<void> result;
 
-		// add to observer list of the input handler
-		dxApp->addInputHandlerObserver(this);
-
 		// hide the standard cursor
 		ShowCursor(false);
 
 		// allow keyboard input and disable mouse input
-		dxApp->activeMouse = false;
-		dxApp->activeKeyboard = true;
+		dxApp.getInputComponent().getInputHandler().activeMouse = false;
+		dxApp.getInputComponent().getInputHandler().activeKeyboard = true;
 		
 		// create text formats
 		if (!createTextFormats().wasSuccessful())
@@ -64,8 +70,17 @@ namespace UI
 		// create sprites
 		if (!initializeLogoSprites().wasSuccessful())
 			return std::runtime_error("Critical error: Unable to initialize logo sprites!");
-			
-		// return success
+	
+		// load the bell0bytes barking sound
+		introMusic = new audio::SoundEvent();
+		result = dxApp.getAudioComponent().loadFile(dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Music, L"bell0bytesIntroBark.wav"), *introMusic, audio::AudioTypes::Music);
+		if (!result.isValid())
+			return result;
+
+		// send depesche to play barking sound
+		core::Depesche depesche(*this, dxApp.getAudioComponent(), core::DepescheTypes::PlaySoundEvent, introMusic);
+		dxApp.addMessage(depesche);
+
 		return { };
 	}
 
@@ -91,16 +106,19 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// User Input //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<bool> IntroState::onNotify(input::InputHandler* const ih, const bool listening)
+	util::Expected<void> IntroState::onMessage(const core::Depesche& depesche)
 	{
-		if(!listening)
-			return handleInput(ih->activeKeyMap);
+		input::InputHandler* ih = (input::InputHandler*)depesche.sender;
+
+		if (!isPaused)
+			if (!ih->isListening())
+				return handleInput(ih->activeKeyMap);
 
 		// return success
-		return true;
+		return { };
 	}
 
-	util::Expected<bool> IntroState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
+	util::Expected<void> IntroState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
 	{
 		// act on user input
 		for (auto x : activeKeyMap)
@@ -113,7 +131,7 @@ namespace UI
 				break;
 
 			case input::GameCommands::ShowFPS:
-				dxApp->toggleFPS();
+				dxApp.toggleFPS();
 				break;
 
 			case input::GameCommands::Back:
@@ -122,7 +140,7 @@ namespace UI
 			}
 		}
 
-		return true;
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -138,13 +156,20 @@ namespace UI
 		else
 		{
 			frameTime += deltaTime;
-			
+
+			if (frameTime < secondsPerLogo)
+				//dxApp.vibrateGamepad(15000, 15000);
+				dxApp.getInputComponent().getInputHandler().vibrateGamepad(0.75f, 0.75f);
+
 			// update trademark countdown text
 			updateTrademarkCountdownTextLayout();
 					
 			if (frameTime > secondsPerLogo)
-				if (!dxApp->changeGameState(&UI::MainMenuState::createInstance(dxApp, L"Main Menu")).wasSuccessful())
+			{
+				dxApp.getInputComponent().getInputHandler().vibrateGamepad((unsigned int)0, (unsigned int)0);
+				if (!dxApp.changeGameState(&UI::MainMenuState::createInstance(dxApp, L"Main Menu")).wasSuccessful())
 					return std::runtime_error("Critical error: Unable to change to the main menu state!");
+			}
 		}
 
 		// return success
@@ -159,12 +184,12 @@ namespace UI
 		if (!showTradeMarkLogos)
 		{
 			// print bell0bytes and author text
-			d2d->printText(0, dxApp->getCurrentHeight() / 2.0f - 100, companyNameLayout.Get());
-			d2d->printCenteredText(authorNameLayout.Get(), 30, 50);
+			dxApp.getGraphicsComponent().getWriteComponent().printText(0, dxApp.getGraphicsComponent().getCurrentHeight() / 2.0f - 100, companyNameLayout.Get());
+			dxApp.getGraphicsComponent().getWriteComponent().printCenteredText(authorNameLayout.Get(), 30, 50);
 
 			// blink the continue text
 			if (showContinueText)
-				d2d->printText(0, dxApp->getCurrentHeight() - 100.0f, continueLayout.Get());
+				dxApp.getGraphicsComponent().getWriteComponent().printText(0, dxApp.getGraphicsComponent().getCurrentHeight() - 100.0f, continueLayout.Get());
 		}
 		else
 		{
@@ -173,12 +198,12 @@ namespace UI
 			logos[1]->drawCentered(0.5f, 1, -100);
 			logos[2]->drawCentered(0.4f, 700, -280);
 			
-			d2d->printText(0, dxApp->getCurrentHeight() - 200.0f, trademarkLayout.Get());
-			d2d->printText(0, dxApp->getCurrentHeight() - 100.0f, trademarkCountdownLayout.Get());
+			dxApp.getGraphicsComponent().getWriteComponent().printText(0, dxApp.getGraphicsComponent().getCurrentHeight() - 200.0f, trademarkLayout.Get());
+			dxApp.getGraphicsComponent().getWriteComponent().printText(0, dxApp.getGraphicsComponent().getCurrentHeight() - 100.0f, trademarkCountdownLayout.Get());
 		}
 
 		// print FPS information
-		d2d->printFPS();
+		dxApp.getGraphicsComponent().getWriteComponent().printFPS();
 
 		// return success
 		return { };
@@ -189,12 +214,16 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<void> IntroState::shutdown()
 	{
-		// remove from the observer list
-		dxApp->removeInputHandlerObserver(this);
+		// stop the barking sound
+		dxApp.getAudioComponent().stopSoundEvent(*introMusic);
 		
 		// delete logos
 		for (auto x : logos)
 			delete x;
+
+		// delete sound event
+		if (introMusic)
+			delete introMusic;
 
 		// return success
 		return { };
@@ -208,27 +237,27 @@ namespace UI
 		util::Expected<void> result;
 
 		// company name
-		result = d2d->createTextFormat(L"Lucida Handwriting", 72.0f, DWRITE_TEXT_ALIGNMENT_CENTER, companyNameFormat);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Lucida Handwriting", 72.0f, DWRITE_TEXT_ALIGNMENT_CENTER, companyNameFormat);
 		if (!result.isValid())
 			return result;
 
 		// author name
-		result = d2d->createTextFormat(L"Segoe UI", 36.0f, authorNameFormat);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Segoe UI", 36.0f, authorNameFormat);
 		if (!result.isValid())
 			return result;
 
 		// press button to continue
-		result = d2d->createTextFormat(L"Segoe UI", 24.0f, DWRITE_TEXT_ALIGNMENT_CENTER, continueFormat);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Segoe UI", 24.0f, DWRITE_TEXT_ALIGNMENT_CENTER, continueFormat);
 		if (!result.isValid())
 			return result;
 
 		// trademark countdown
-		result = d2d->createTextFormat(L"Segoe UI", 12.0f, DWRITE_TEXT_ALIGNMENT_CENTER, trademarkCountdownFormat);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Segoe UI", 12.0f, DWRITE_TEXT_ALIGNMENT_CENTER, trademarkCountdownFormat);
 		if (!result.isValid())
 			return result;
 
 		// trademark text format
-		result = d2d->createTextFormat(L"Segoe UI", 18.0f, DWRITE_TEXT_ALIGNMENT_CENTER, trademarkFormat);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Segoe UI", 18.0f, DWRITE_TEXT_ALIGNMENT_CENTER, trademarkFormat);
 		if (!result.isValid())
 			return result;
 
@@ -244,18 +273,18 @@ namespace UI
 		std::wstring bell0bytes = L"bell0bytes presents";
 		std::wstring bell0 = L"a Gilles Bellot game";
 
-		result = d2d->createTextLayoutFromWString(&bell0bytes, companyNameFormat.Get(), (float)dxApp->getCurrentWidth(), 100, companyNameLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(bell0bytes, companyNameFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, companyNameLayout);
 		if (!result.isValid())
 			return result;
 
-		result = d2d->createTextLayoutFromWString(&bell0, authorNameFormat.Get(), (float)dxApp->getCurrentWidth(), 100, authorNameLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(bell0, authorNameFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, authorNameLayout);
 		if (!result.isValid())
 			return result;
 		
 		// press key to continue
 		std::wstring continueText = L"Press 'Enter' to continue!";
 
-		result = d2d->createTextLayoutFromWString(&continueText, continueFormat.Get(), (float)dxApp->getCurrentWidth(), 100, continueLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(continueText, continueFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, continueLayout);
 		if (!result.isValid())
 			return result;
 		
@@ -266,7 +295,7 @@ namespace UI
 		trademarkText << "Boost, distributed under the Boost Software License, Version 1.0." << std::endl;
 		trademarkText << "Lua (with Sol), distributed under the MIT License, Version 5.3.4" << std::endl;
 
-		result = d2d->createTextLayoutFromWStringStream(&trademarkText, trademarkFormat.Get(), (float)dxApp->getCurrentWidth(), 100, trademarkLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(trademarkText, trademarkFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, trademarkLayout);
 		if (!result.isValid())
 			return result;
 
@@ -275,7 +304,7 @@ namespace UI
 		trademarkCountdownText.precision(1);
 		trademarkCountdownText << "The game will continue in: " << this->secondsPerLogo << " s." << std::endl;
 
-		result = d2d->createTextLayoutFromWStringStream(&trademarkCountdownText, trademarkCountdownFormat.Get(), (float)dxApp->getCurrentWidth(), 100, trademarkCountdownLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(trademarkCountdownText, trademarkCountdownFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, trademarkCountdownLayout);
 		if (!result.isValid())
 			return result;
 
@@ -288,13 +317,13 @@ namespace UI
 		try
 		{
 			// the boost logo
-			logos.push_back(new graphics::Sprite(d2d, dxApp->openFile(fileSystem::DataFolders::Logos, L"logoBoost.png").c_str()));
+			logos.push_back(new graphics::Sprite(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Logos, L"logoBoost.png").c_str()));
 
 			// the DirectX 11 logo
-			logos.push_back(new graphics::Sprite(d2d, dxApp->openFile(fileSystem::DataFolders::Logos, L"logoDX11.png").c_str()));
+			logos.push_back(new graphics::Sprite(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Logos, L"logoDX11.png").c_str()));
 
 			// the Lua logo
-			logos.push_back(new graphics::Sprite(d2d, dxApp->openFile(fileSystem::DataFolders::Logos, L"logoLua.png").c_str()));
+			logos.push_back(new graphics::Sprite(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Logos, L"logoLua.png").c_str()));
 		}
 		catch (std::exception&e) { return e; }
 		
@@ -310,7 +339,7 @@ namespace UI
 		if (timeLeft < 0.1f)
 			timeLeft = 0.0f;
 		trademarkCountdownText << "The game will continue in: " << timeLeft << "s." << std::endl;
-		if (!d2d->createTextLayoutFromWStringStream(&trademarkCountdownText, trademarkCountdownFormat.Get(), (float)dxApp->getCurrentWidth(), 100, trademarkCountdownLayout).wasSuccessful())
+		if (!dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(trademarkCountdownText, trademarkCountdownFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, trademarkCountdownLayout).wasSuccessful())
 			return std::runtime_error("Critical error: Unable to create trademark countdown text layout!");
 
 		// return success

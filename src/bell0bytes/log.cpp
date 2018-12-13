@@ -49,6 +49,6 @@ namespace util
 	void FileLogPolicy::write(const std::string& msg)
 	{
 		// add the message to the stream
-		outputStream << msg << std::endl;
+		outputStream << msg;
 	}
 }

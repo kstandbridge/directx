@@ -17,8 +17,13 @@
 #include <Windows.h>
 
 // bell0bytes util
-#include "expected.h"
 #include "observer.h"
+
+namespace util
+{
+	template<typename T>
+	class Expected;
+}
 
 namespace core
 {
@@ -30,7 +35,7 @@ namespace core
 	{
 	private:
 		HWND mainWindow;						// handle to the main window
-		DirectXApp* const dxApp;				// the core application class
+		DirectXApp& dxApp;						// the core application class
 
 		// resolution
 		unsigned int clientWidth;				// desired client resolution
@@ -41,18 +46,18 @@ namespace core
 		bool isMaximized;						// true iff the window is maximized
 		bool isResizing;						// true iff the window is being dragged around by the mouse
 
-		util::Expected<void> init(LPCWSTR windowTitle);	// initializes the window
+		util::Expected<void> init(const HINSTANCE& hInstance, LPCWSTR windowTitle);	// initializes the window
 		void readDesiredResolution();					// gets desired screen resolution from config file	
 
 	public:
 		// constructor and destructor
-		Window(DirectXApp* const dxApp, LPCWSTR windowTitle);
+		Window(DirectXApp& dxApp, const HINSTANCE& hInstance, LPCWSTR windowTitle);
 		~Window();
 
 		// getters
-		inline HWND getMainWindowHandle() const { return mainWindow; };
-		unsigned int getClientWidth() const { return clientWidth; };
-		unsigned int getClientHeight() const { return clientHeight; };
+		inline const HWND& getMainWindowHandle() const { return mainWindow; };
+		const unsigned int getClientWidth() const { return clientWidth; };
+		const unsigned int getClientHeight() const { return clientHeight; };
 
 		// the call back function
 		virtual LRESULT CALLBACK msgProc(HWND hWnd, unsigned int msg, WPARAM wParam, LPARAM lParam);

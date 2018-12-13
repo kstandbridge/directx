@@ -21,16 +21,18 @@
 #include <d3d11_4.h>
 #pragma comment (lib, "d3d11.lib")
 
-// bell0bytes graphics
-#include "d2d.h"
-
 // bell0bytes utilities
-#include "expected.h"
 #include "observer.h"
 
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
 
 // forward definitions
+namespace util
+{
+	template<typename T>
+	class Expected;
+}
+
 namespace core
 {
 	class Window;
@@ -40,6 +42,8 @@ namespace core
 // CLASSES //////////////////////////////////////////////////////////////////////////////
 namespace graphics
 {
+	class Direct2D;
+
 	// structure to hold vertex data
 	struct VERTEX
 	{
@@ -62,11 +66,13 @@ namespace graphics
 		int size;
 	};
 
+	// the Direct3D class ; sends notification to the DirectXApp if the fullscreen mode or the resolution changes
 	class Direct3D : public util::Subject
 	{
 	private:
 		// members
-		const core::DirectXApp* const dxApp;								// pointer to the main application class
+		core::DirectXApp& dxApp;											// address of the main application class; can't be const because of the observer queue
+		const HWND& appWindow;												// address of the main application window
 
 		// Direct3D
 		Microsoft::WRL::ComPtr<ID3D11Device> dev;							// the actual Direct3D device
@@ -94,10 +100,10 @@ namespace graphics
 
 		// helper functions
 		util::Expected<void> writeCurrentModeDescriptionToConfigurationFile() const;	// write the current screen resolution to the configuration file
-		util::Expected<void> readConfigurationFile();			// read preferences from configuration file
+		util::Expected<void> readConfigurationFile();									// read preferences from configuration file
 		
 		// functions to create resources
-		util::Expected<void> createResources(Direct2D* const d2d, const core::Window* const window);	// create device resources, such as the swap chain
+		util::Expected<void> createResources(Direct2D* const d2d, const core::Window& window);	// create device resources, such as the swap chain
 		
 		// functions to change screen resolutions
 		void changeResolution(bool increase);					// changes the screen resolution, if increase is true, a higher resolution is chosen, else the resolution is lowered
@@ -106,23 +112,23 @@ namespace graphics
 		util::Expected<void> initPipeline();					// initializes the (graphics) rendering pipeline
 
 		// shaders
-		const util::Expected<ShaderBuffer> loadShader(const std::wstring filename) const;	// read shader data from .cso files
+		const util::Expected<ShaderBuffer> loadShader(const std::wstring& filename) const;	// read shader data from .cso files
 
 	public:
 		// constructor
-		Direct3D(core::DirectXApp* const dxApp, const core::Window* const mainWindow);
+		Direct3D(core::DirectXApp& dxApp, const core::Window& mainWindow);
 		~Direct3D();
 			
 		// resize resources
-		util::Expected<void> onResize(Direct2D* const d2d);		// resize the resources
-		util::Expected<bool> switchFullscreen() const;			// return true iff the fullscreen state should be switched
-		util::Expected<void> toggleFullscreen(Direct2D* const); // toggle fullscreen mode
-		util::Expected<void> changeResolution(const unsigned int index);		// change screen resolution to the desired index
+		util::Expected<void> onResize(Direct2D* const d2d);					// resize the resources
+		util::Expected<bool> switchFullscreen() const;						// return true iff the fullscreen state should be switched
+		util::Expected<void> toggleFullscreen();							// toggle fullscreen mode
+		util::Expected<void> changeResolution(const unsigned int index);	// change screen resolution to the desired index
 
 		// present the scene
-		void clearBuffers();									// clear the back and depth/stencil buffers (white)
-		void clearBuffers(float[4]);							// clear the back buffer with a given colour
-		util::Expected<int> present();							// present the chain, by flipping the buffers
+		void clearBuffers();				// clear the back and depth/stencil buffers (white)
+		void clearBuffers(float[4]);		// clear the back buffer with a given colour
+		util::Expected<int> present();		// present the chain, by flipping the buffers
 
 		const unsigned int getCurrentWidth() const { return currentModeDescription.Width; };
 		const unsigned int getCurrentHeight() const { return currentModeDescription.Height; };

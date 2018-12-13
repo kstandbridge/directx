@@ -2,6 +2,8 @@
 
 // bell0bytes core
 #include "app.h"
+#include "coreComponent.h"
+#include "window.h"
 
 // bell0bytes UI
 #include "mainMenuState.h"
@@ -10,11 +12,20 @@
 
 // bell0bytes input
 #include "gameCommands.h"
+#include "inputComponent.h"
 #include "inputHandler.h"
 
 // bell0bytes graphics
+#include "graphicsComponent.h"
+#include "graphicsComponentWrite.h"
 #include "sprites.h"
 #include "buttons.h"
+
+// bell0bytes file system
+#include "fileSystemComponent.h"
+
+// bell0bytes audio
+#include "audioComponent.h"
 
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace UI
@@ -22,13 +33,13 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	MainMenuState::MainMenuState(core::DirectXApp* const app, const std::wstring& name) : GameState(app, name), currentlySelectedButton(0)
+	MainMenuState::MainMenuState(core::DirectXApp& app, const std::wstring& name) : GameState(app, name), currentlySelectedButton(0)
 	{ }
 
 	MainMenuState::~MainMenuState()
 	{ }
 
-	MainMenuState& MainMenuState::createInstance(core::DirectXApp* const app, const std::wstring& stateName)
+	MainMenuState& MainMenuState::createInstance(core::DirectXApp& app, const std::wstring& stateName)
 	{
 		static MainMenuState instance(app, stateName);
 		return instance;
@@ -41,38 +52,52 @@ namespace UI
 	{
 		// handle errors
 		util::Expected<void> result;
-
-		// add to observer list of the input handler
-		dxApp->addInputHandlerObserver(this);
-
+		
 		// position mouse at the center of the screen
-		if (!SetCursorPos(dxApp->getCurrentWidth() / 2, dxApp->getCurrentHeight() / 2))
+		if (!SetCursorPos(dxApp.getGraphicsComponent().getCurrentWidth() / 2, dxApp.getGraphicsComponent().getCurrentHeight() / 2))
 			return std::runtime_error("Critical error: Unable to set cursor position!");
 
 		// hide the standard cursor
 		ShowCursor(false);
 
 		// allow mouse and keyboard input
-		dxApp->activeMouse = true;
-		dxApp->activeKeyboard = true;
+		dxApp.getInputComponent().getInputHandler().activeMouse = true;
+		dxApp.getInputComponent().getInputHandler().activeKeyboard = true;
 
 		if (firstCreation)
 		{
 			// create text format
-			result = d2d->createTextFormat(L"Lucida Handwriting", 128.0f, DWRITE_TEXT_ALIGNMENT_CENTER, mainMenuFormat);
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Lucida Handwriting", 128.0f, DWRITE_TEXT_ALIGNMENT_CENTER, mainMenuFormat);
 			if (!result.isValid())
 				return result;
 
 			// create text layout
 			std::wstring menu = L"Main Menu";
-			result = d2d->createTextLayoutFromWString(&menu, mainMenuFormat.Get(), (float)dxApp->getCurrentWidth(), 200, mainMenuLayout);
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(menu, mainMenuFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 200, mainMenuLayout);
 			if (!result.isValid())
 				return result;
+
+			// load the button sound
+			buttonSound = new audio::SoundEvent();
+			result = dxApp.getAudioComponent().loadFile(dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Sounds, L"button.wav"), *buttonSound, audio::AudioTypes::Sound);
+			if (!result.isValid())
+				return result;
+
+			// load the menu music
+			menuMusic = new audio::StreamEvent(dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Music, L"menuMusic.mp3"), true, audio::AudioTypes::Music);
 		}
 		
 		// create buttons
 		if (!initializeButtons().wasSuccessful())
 			return std::runtime_error("Critical error: Unable to initialize menu buttons!");
+		
+		if (!musicIsPlaying)
+		{
+			// send depesche to play music
+			core::Depesche depesche(*this, dxApp.getAudioComponent(), core::DepescheTypes::BeginStream, menuMusic);
+			dxApp.addMessage(depesche);
+		}
+		musicIsPlaying = true;
 		
 		// do not initialize the text layouts again
 		firstCreation = false;
@@ -115,15 +140,22 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonPlay.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonPlay.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		// set lambda function
-		auto onClick = [this]() -> util::Expected<bool>
+		auto onClick = [this]() -> util::Expected<void>
 		{
-			if (!dxApp->changeGameState(&core::PlayState::createInstance(dxApp, L"Game")).wasSuccessful())
+			dxApp.getAudioComponent().playSoundEvent(*buttonSound);
+			Sleep(120);
+
+			core::Depesche depesche(*this, dxApp.getAudioComponent(), core::DepescheTypes::EndStream, nullptr);
+			dxApp.addMessage(depesche);
+			musicIsPlaying = false;
+
+			if (!dxApp.changeGameState(&game::PlayState::createInstance(dxApp, L"Game")).wasSuccessful())
 				return std::runtime_error("Critical error: Unable to change to the main game state!");
-			return false;	// notify that the stack was changed!
+			return { };
 		};
 
 		// add button to the list
@@ -161,15 +193,18 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonOptions.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonOptions.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		// set lambda function
-		auto onClickOptions = [this]() -> util::Expected<bool>
+		auto onClickOptions = [this]() -> util::Expected<void>
 		{
-			if (!dxApp->changeGameState(&UI::OptionsMenuState::createInstance(dxApp, L"Options Menu")).wasSuccessful())
+			dxApp.getAudioComponent().playSoundEvent(*buttonSound);
+			Sleep(120);
+
+			if (!dxApp.changeGameState(&UI::OptionsMenuState::createInstance(dxApp, L"Options Menu")).wasSuccessful())
 				return std::runtime_error("Critical error: Unable to change to the options menu state!");
-			return false;		// notify that the stack was changed!
+			return { };
 		};
 
 		// add button to the list
@@ -207,16 +242,21 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonQuit.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonQuit.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
 		// set lambda function
-		auto onClickQuit = [this]() -> util::Expected<bool>
+		auto onClickQuit = [this]() -> util::Expected<void>
 		{
-			PostMessage(dxApp->getMainWindow(), WM_CLOSE, 0, 0);
+			dxApp.getAudioComponent().playSoundEvent(*buttonSound);
+			Sleep(120);
+
+			this->releaseAudio();
+
+			PostMessage(dxApp.getCoreComponent().getWindow().getMainWindowHandle(), WM_CLOSE, 0, 0);
 			if (!shutdown().wasSuccessful())
 				return std::runtime_error("Critical error: Unable to shut down the main menu!");
-			return false;	// notify that the stack was changed
+			return { };
 		};
 
 		// add button to the list
@@ -251,8 +291,8 @@ namespace UI
 	util::Expected<void> MainMenuState::resume()
 	{
 		// allow mouse and keyboard input
-		dxApp->activeMouse = true;
-		dxApp->activeKeyboard = true;
+		dxApp.getInputComponent().getInputHandler().activeMouse = true;
+		dxApp.getInputComponent().getInputHandler().activeKeyboard = true;
 
 		isPaused = false;
 
@@ -263,17 +303,19 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// User Input //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<bool> MainMenuState::onNotify(input::InputHandler* const ih, const bool listening)
+	util::Expected<void> MainMenuState::onMessage(const core::Depesche& depesche)
 	{
-		if(!isPaused)
-			if(!listening)
+		input::InputHandler* ih = (input::InputHandler*)depesche.sender;
+
+		if (!isPaused)
+			if (!ih->isListening())
 				return handleInput(ih->activeKeyMap);
 
 		// return success
-		return true;
+		return { };
 	}
 
-	util::Expected<bool> MainMenuState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
+	util::Expected<void> MainMenuState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
 	{
 		// act on user input
 		for (auto x : activeKeyMap)
@@ -292,7 +334,7 @@ namespace UI
 				else
 					currentlySelectedButton = 0;
 				menuButtons[currentlySelectedButton]->select();
-				return true;	// no stack change
+				break;
 
 			case input::MoveUp:
 				// select next button in the list
@@ -302,10 +344,10 @@ namespace UI
 				else
 					currentlySelectedButton = (unsigned int)menuButtons.size()-1;
 				menuButtons[currentlySelectedButton]->select();
-				return true;	// no stack change
+				break;
 
 			case input::GameCommands::ShowFPS:
-				dxApp->toggleFPS();
+				dxApp.toggleFPS();
 				break;
 
 			case input::GameCommands::Back:
@@ -315,7 +357,7 @@ namespace UI
 		}
 
 		// notify that the stack was not changed
-		return true;
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -326,11 +368,11 @@ namespace UI
 		if (isPaused)
 			return { };
 
-		if (dxApp->activeMouse)
+		if (dxApp.getInputComponent().getInputHandler().activeMouse)
 		{
 			// get mouse position
-			long mouseX = dxApp->getMouseX();
-			long mouseY = dxApp->getMouseY();
+			long mouseX = dxApp.getInputComponent().getInputHandler().getMouseX();
+			long mouseY = dxApp.getInputComponent().getInputHandler().getMouseY();
 
 			// check if mouse position is inside button rectangle
 			unsigned int i = 0;
@@ -367,7 +409,7 @@ namespace UI
 	util::Expected<void> MainMenuState::render(const double /*farSeer*/)
 	{
 		// print title
-		d2d->printText(0, 100, mainMenuLayout.Get());
+		dxApp.getGraphicsComponent().getWriteComponent().printText(0, 100, mainMenuLayout.Get());
 
 		// draw buttons
 		unsigned int i = 0;
@@ -379,7 +421,7 @@ namespace UI
 		}
 
 		// print FPS information
-		d2d->printFPS();
+		dxApp.getGraphicsComponent().getWriteComponent().printFPS();
 
 		// return success
 		return { };
@@ -398,11 +440,23 @@ namespace UI
 			delete button;
 		menuButtons.clear();
 		currentlySelectedButton = 0;
-
-		// remove from the observer list
-		dxApp->removeInputHandlerObserver(this);
-
+				
 		// return success
 		return { };
+	}
+
+	void MainMenuState::releaseAudio()
+	{
+		// stop button sound
+		if (buttonSound)
+			delete buttonSound;
+
+		// stop menu music
+		core::Depesche depesche(*this, dxApp.getAudioComponent(), core::DepescheTypes::EndStream, nullptr);
+		dxApp.addMessage(depesche);
+		musicIsPlaying = false;
+
+		if (menuMusic)
+			delete menuMusic;
 	}
 }

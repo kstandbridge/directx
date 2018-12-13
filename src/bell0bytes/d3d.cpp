@@ -1,9 +1,3 @@
-#include "d3d.h"
-#include "serviceLocator.h"
-#include "app.h"
-#include "stringConverter.h"
-#include "d2d.h"
-
 // Lua and Sol
 //#pragma warning( push )
 //#pragma warning( disable : 4127)	// disable constant if expr warning
@@ -12,14 +6,37 @@
 //#pragma warning( pop ) 
 #pragma comment(lib, "liblua53.a")
 
+// the header
+#include "d3d.h"
+
+// bell0bytes core
+#include "app.h"
+#include "window.h"
+
+// bell0bytes file system
+#include "fileSystemComponent.h"
+
+// bell0bytes util
+#include "serviceLocator.h"
+#include "stringConverter.h"
+
+// bell0bytes graphics
+#include "graphicsComponent.h"
+#include "d2d.h"
+
+// bell0bytes input
+#include "gameCommands.h"
+
 namespace graphics
 {
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructor //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	Direct3D::Direct3D(core::DirectXApp* const dxApp, const core::Window* const window) : dxApp(dxApp), desiredColourFormat(DXGI_FORMAT_B8G8R8A8_UNORM), startInFullscreen(false), currentModeIndex(0), currentlyInFullscreen(false), changeMode(false)
+	Direct3D::Direct3D(core::DirectXApp& dxApp, const core::Window& window) : dxApp(dxApp), appWindow(window.getMainWindowHandle()), desiredColourFormat(DXGI_FORMAT_B8G8R8A8_UNORM), startInFullscreen(false), currentModeIndex(0), currentlyInFullscreen(false), changeMode(false)
 	{
+		// handle errors
 		HRESULT hr;
+		util::Expected<void> result;
 
 		// read configuration file
 		if (!readConfigurationFile().wasSuccessful())
@@ -56,12 +73,11 @@ namespace graphics
 		}
 
 		// add core DirectXApp as observer
-		addObserver(dxApp);
+		addObserver(&dxApp);
 
 		//  log success
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Direct3D was initialized successfully.");
 	}
-
 	Direct3D::~Direct3D()
 	{
 		// switch to windowed mode before exiting the application
@@ -76,7 +92,7 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Resource Creation ////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<void> Direct3D::createResources(Direct2D* const d2d, const core::Window* const window)
+	util::Expected<void> Direct3D::createResources(Direct2D* const d2d, const core::Window& window)
 	{
 		// create the swap chain
 
@@ -93,7 +109,7 @@ namespace graphics
 		scd.SampleDesc.Quality = 0;
 		scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;							// use back buffer as render target
 		scd.BufferCount = 3;														// the number of buffers in the swap chain (including the front buffer)
-		scd.OutputWindow = dxApp->getMainWindow();									// set the main window as output target
+		scd.OutputWindow = window.getMainWindowHandle();									// set the main window as output target
 		scd.Windowed = true;														// windowed, not fullscreen$
 		scd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;								// flip mode and discarded buffer after presentation
 		scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;							// allow mode switching
@@ -156,7 +172,7 @@ namespace graphics
 		{
 			// if the current resolution is not supported, switch to the lowest supported resolution
 			for (unsigned int i = 0; i < numberOfSupportedModes; i++)
-				if ((unsigned int)window->getClientWidth() == supportedModes[i].Width && (unsigned int)window->getClientHeight() == supportedModes[i].Height)
+				if ((unsigned int)window.getClientWidth() == supportedModes[i].Width && (unsigned int)window.getClientHeight() == supportedModes[i].Height)
 				{
 					supportedMode = true;
 					currentModeDescription = supportedModes[i];
@@ -199,7 +215,6 @@ namespace graphics
 		// return success
 		return {};
 	}
-
 	util::Expected<void> Direct3D::onResize(Direct2D* const d2d)
 	{
 		// Microsoft recommends zeroing out the refresh rate of the description before resizing the targets
@@ -234,7 +249,7 @@ namespace graphics
 				RECT rect = { 0, 0, (long)currentModeDescription.Width,  (long)currentModeDescription.Height };
 				if (FAILED(AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, false, WS_EX_OVERLAPPEDWINDOW)))
 					return std::runtime_error("Failed to adjust window rectangle!");
-				SetWindowPos(dxApp->getMainWindow(), HWND_TOP, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE);
+				SetWindowPos(appWindow, HWND_TOP, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOMOVE);
 			}
 
 			// change fullscreen mode
@@ -291,7 +306,7 @@ namespace graphics
 
 		// (re)-create the Direct2D target bitmap associated with the swap chain back buffer and set it as the current target
 		if(d2d)
-			if(!d2d->createBitmapRenderTarget(this).wasSuccessful())
+			if(!d2d->createBitmapRenderTarget(*this).wasSuccessful())
 				return std::runtime_error("Direct3D was unable to resize the Direct2D bitmap render target!");
 
 		// re-create Direct2D device dependent resources
@@ -304,7 +319,7 @@ namespace graphics
 
 		// log and return success
 #ifndef NDEBUG
-		if (dxApp->gameHasStarted())
+		if (dxApp.gameHasStarted())
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The Direct3D and Direct2D resources were resized successfully.");
 #endif
 		return {};
@@ -374,7 +389,7 @@ namespace graphics
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////// Shaders ////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	const util::Expected<ShaderBuffer> Direct3D::loadShader(const std::wstring filename) const
+	const util::Expected<ShaderBuffer> Direct3D::loadShader(const std::wstring& filename) const
 	{
 		// load precompiled shaders from .cso objects
 		ShaderBuffer sb;
@@ -411,14 +426,12 @@ namespace graphics
 		float white[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 		this->clearBuffers(white);
 	}
-
 	void Direct3D::clearBuffers(float colour[4])
 	{
 		// clear the back buffer and depth / stencil buffer
 		devCon->ClearRenderTargetView(renderTargetView.Get(), colour);
 		devCon->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	}
-
 	util::Expected<int> Direct3D::present()
 	{
 		HRESULT hr = swapChain->Present(0, DXGI_PRESENT_DO_NOT_WAIT);
@@ -472,7 +485,6 @@ namespace graphics
 			notify(input::Events::ChangeResolution);
 		}
 	}
-
 	util::Expected<void> Direct3D::changeResolution(const unsigned int index)
 	{
 		// change mode
@@ -482,8 +494,7 @@ namespace graphics
 		// resize everything
 		return notify(input::Events::ChangeResolution);
 	}
-
-	util::Expected<void> Direct3D::toggleFullscreen(Direct2D* const d2d)
+	util::Expected<void> Direct3D::toggleFullscreen()
 	{
 		if (!currentlyInFullscreen)
 		{
@@ -500,12 +511,8 @@ namespace graphics
 			currentlyInFullscreen = false;
 		}
 
-		return onResize(d2d);
+		return dxApp.getGraphicsComponent().onResize(dxApp);
 	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////// Getters //////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<bool> Direct3D::switchFullscreen() const
 	{
 		BOOL fullscreen;
@@ -523,7 +530,7 @@ namespace graphics
 		// create the string to print
 		std::string resolution = "\tresolution = { width = " + std::to_string(currentModeDescription.Width) + ", height = " + std::to_string(currentModeDescription.Height) + " }";
 		// append name of the log file to the path
-		std::wstring pathToPrefFile = dxApp->getPathToConfigurationFiles() + L"\\" + dxApp->getPrefsFile();
+		std::wstring pathToPrefFile = dxApp.getFileSystemComponent().getPathToConfigurationFiles() + L"\\" + dxApp.getFileSystemComponent().getPrefsFile();
 
 		// read the file
 		std::vector<std::string> data;
@@ -561,13 +568,12 @@ namespace graphics
 
 		return {};
 	}
-
 	util::Expected<void> Direct3D::readConfigurationFile()
 	{
-		if (dxApp->hasValidConfigurationFile())
+		if (dxApp.getFileSystemComponent().hasValidConfigurationFile())
 		{
 			// configuration file exists, try to read from it
-			std::wstring pathToPrefFile = dxApp->getPathToConfigurationFiles() + L"\\" + dxApp->getPrefsFile();
+			std::wstring pathToPrefFile = dxApp.getFileSystemComponent().getPathToConfigurationFiles() + L"\\" + dxApp.getFileSystemComponent().getPrefsFile();
 
 			try
 			{
@@ -581,7 +587,7 @@ namespace graphics
 				currentModeIndex = lua["config"]["resolution"]["index"].get_or(-1);
 #ifndef NDEBUG
 				std::stringstream res;
-				res << "The fullscreen mode was read from the LUA configuration file: " << std::noboolalpha << startInFullscreen << ".";
+				res << "The fullscreen mode was read from the LUA configuration file: " << std::boolalpha << startInFullscreen << ".";
 				util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>(res.str());
 #endif
 			}

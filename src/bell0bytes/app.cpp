@@ -1,28 +1,32 @@
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
-// windows
-#include <Shlobj.h>
-#include <Shlwapi.h>
-#include <Pathcch.h>
-
-#pragma comment(lib, "Shlwapi.lib")
-#pragma comment(lib, "Pathcch.lib")
+// the header
+#include "app.h"
 
 // bell0bytes core
-#include "app.h"
+#include "coreComponent.h"
 #include "timer.h"
 #include "states.h"
 
-// bell0bytes util
-#include "expected.h"
-#include "observer.h"
-#include "serviceLocator.h"
+// bell0bytes file system
+#include "fileSystemComponent.h"
 
 // bell0bytes graphics
-#include "d2d.h"
+#include "graphicsComponent.h"
+#include "graphicsComponent2D.h"
+#include "graphicsComponent3D.h"
+#include "graphicsComponentWrite.h"
 
 // bell0bytes input
+#include "inputComponent.h"
+#include "gameCommands.h"
 #include "inputHandler.h"
+
+// bell0bytes util
+#include "serviceLocator.h"
+
+// bell0bytes audio
+#include "audioComponent.h"
 
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace core
@@ -30,105 +34,64 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructors /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	DirectXApp::DirectXApp(HINSTANCE hInstance, const std::wstring& applicationName, const std::wstring& applicationVersion) : appInstance(hInstance), appWindow(NULL), activeFileLogger(false), userPrefFile(L"bell0prefs.lua"), validUserConfigurationFile(false), isPaused(true), timer(NULL), fps(0), mspf(0.0), dt(1000/(double)6000), maxSkipFrames(10), hasStarted(false), showFPS(true), d3d(NULL), d2d(NULL), manufacturerName(L"bell0bytes"), applicationName(applicationName), applicationVersion(applicationVersion), activeMouse(false), activeKeyboard(false), gameIsRunning(false) { }
+	DirectXApp::DirectXApp() : applicationIsPaused(true), fps(0), mspf(0.0), dt(1000.0f/6000.0f), maxSkipFrames(10), applicationStarted(false), showFPS(true), stateStackChanged(false) { }
 	DirectXApp::~DirectXApp()
 	{
 		shutdown();
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////// Create Core App Components  //////////////////////////////////
+	////////////////////////// Create App Components  ///////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<void> DirectXApp::init(LPCWSTR windowTitle)
+	util::Expected<void> DirectXApp::init(const HINSTANCE& hInstance, LPCWSTR windowTitle, const std::wstring& manufacturerName, const std::wstring& applicationName, const std::wstring& applicationVersion)
 	{
-		// get path to My Documents folder
-		if (!getPathToMyDocuments())
-		{
-			// show error message on a message box
-			MessageBox(NULL, L"Unable to retrieve the path to the My Documents folder!", L"Critical Error!", MB_ICONEXCLAMATION | MB_OK);
-			return std::runtime_error("Unable to retrieve the path to the My Documents folder!");
-		}
-
-		// get path to application data folder
-		if (!getPathToApplicationDataFolders())
-		{
-			// show error message on a message box
-			MessageBox(NULL, L"Unable to retrieve the path to the application data folders!", L"Critical Error!", MB_ICONEXCLAMATION | MB_OK);
-			return std::runtime_error("Unable to retrieve the path to the aplication data folders!");
-		}
+		// initialize file system components
+		try { fileSystemComponent = new fileSystem::FileSystemComponent(manufacturerName, applicationName, applicationVersion); }
+		catch (std::runtime_error& e) { return e; }
+			
+		// create the core components (mainly the window and timer class)
+		try { coreComponent = new CoreComponent(*this, hInstance, windowTitle); }
+		catch (std::runtime_error& e) { return e; }
 		
-		// create the logger
-		try { createLoggingService(); }
-		catch(std::runtime_error) 
-		{
-			// show error message on a message box
-			MessageBox(NULL, L"Unable to start the logging service!", L"Critical Error!", MB_ICONEXCLAMATION | MB_OK);
-			return std::runtime_error("Unable to start the logging service!");
-		}
+		// initialize graphics components
+		try { graphicsComponent = new graphics::GraphicsComponent(*this, *coreComponent->appWindow); }
+		catch (std::runtime_error& e) { return e; }
 
-		// check for valid configuration file
-		if (!checkConfigurationFile())
-			util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("Non-existent or invalid configuration file. Starting with default settings.");
-
-		// create the game timer
-		try { timer = new Timer(); }
-		catch (std::runtime_error)
-		{
-			return std::runtime_error("The high-precision timer could not be started!");
-		}
-
-		// create the application window
-		try { appWindow = new Window(this, windowTitle); }
-		catch (std::runtime_error)
-		{
-			return std::runtime_error("DirectXApp was unable to create the main window!");
-		}
-
-		// initialize Direct3D
-		try { d3d = new graphics::Direct3D(this, appWindow); }
-		catch (std::runtime_error)
-		{
-			return std::runtime_error("DirectXApp was unable to initialize Direct3D!");
-		}
-
-		// initialize Direct2D
-		try { d2d = new graphics::Direct2D(this, d3d); }
-		catch (std::runtime_error)
-		{
-			return std::runtime_error("DirectXApp was unable to initialize Direct2D!");
-		}
-		
-		// start game
-		timer->start();
-		isPaused = false;
+		// initialize audio component
+		try { audioComponent = new audio::AudioComponent(*this); }
+		catch (std::runtime_error& e) { return e; }
+	
+		// start the application
+		coreComponent->timer->start();
+		applicationIsPaused = false;
 
 		// log and return success
-		hasStarted = true;
+		applicationStarted = true;
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The DirectX application initialization was successful.");
 		return {};
 	}
-
 	void DirectXApp::shutdown(const util::Expected<void>* /*expected*/)
 	{
 		while (!gameStates.empty())
-		{
 			gameStates.pop_back();
-		}
 
-		if (d2d)
-			delete d2d;
+		if (audioComponent)
+			delete audioComponent;
 
-		if (d3d)
-			delete d3d;
+		if (inputComponent)
+			delete inputComponent;
 
-		if (appWindow)
-			delete appWindow;
+		if (graphicsComponent)
+			delete graphicsComponent;
 
-		if (timer)
-			delete timer;
+		if (coreComponent)
+			delete coreComponent;
 
-		if(activeFileLogger)
+		if (fileSystemComponent->activeFileLogger)
+		{
 			util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The DirectX application was shutdown successfully.");
+			delete fileSystemComponent;
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -139,9 +102,15 @@ namespace core
 #ifndef NDEBUG
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("Entering the game loop...");
 #endif
+		// error handling
+		util::Expected<void> voidResult;
+		util::Expected<int> intResult(0);
+		
 		// reset (start) the timer
-		timer->reset();
-
+		voidResult = coreComponent->timer->reset();
+		if (!voidResult.isValid())
+			throw voidResult;
+		
 		double accumulatedTime = 0.0;		// stores the time accumulated by the renderer
 		int nLoops = 0;						// the number of completed loops while updating the game
 
@@ -164,38 +133,46 @@ namespace core
 			}
 
 			// let the timer tick
-			timer->tick();
+			voidResult = coreComponent->timer->tick();
+			if (!voidResult.isValid())
+				throw voidResult;
 
-			if (!isPaused)
+			if (!applicationIsPaused)
 			{
-				// expected result
-				util::Expected<int> result(0);
-
 				// compute fps
-				if (!calculateFrameStatistics().wasSuccessful())
-					return util::Expected<int>(std::runtime_error("Critical error: Unable to calculate frame statistics!"));
+				voidResult = calculateFrameStatistics();
+				if (!voidResult.isValid())
+					throw voidResult;
 
 				// acquire input
-				acquireInput();
+				voidResult = acquireInput();
+				if (!voidResult.isValid())
+					throw voidResult;
 
+				// dispatch message
+				voidResult = dispatchMessages();
+				if (!voidResult.isValid())
+					throw voidResult;
+				
 				// accumulate the elapsed time since the last frame
-				accumulatedTime += timer->getDeltaTime();
+				accumulatedTime += coreComponent->timer->getDeltaTime();
 				
 				// now update the game logic with fixed dt as often as possible
 				nLoops = 0;
 				while (accumulatedTime >= dt && nLoops < maxSkipFrames)
 				{
-					result = update(dt);
-					if (!result.isValid())
-						return result;
+					try { intResult = update(dt); }
+					catch (util::Expected<void> &e) { throw std::move(e); }
+					if (!intResult.isValid())
+						return intResult;
 					accumulatedTime -= dt;
 					nLoops++;
 				}
 				
 				// peek into the future and generate the output
-				result = render(accumulatedTime / dt);
-				if (!result.isValid())
-					return result;
+				intResult = render(accumulatedTime / dt);
+				if (!intResult.isValid())
+					return intResult;
 			}
 		}
 
@@ -229,10 +206,11 @@ namespace core
 		if (!result.isValid())
 			return result;
 
+		stateStackChanged = true;
+
 		// return success
 		return { };
 	}
-
 	util::Expected<void> DirectXApp::overlayGameState(GameState* const gameState)
 	{
 		// handle errors
@@ -244,16 +222,17 @@ namespace core
 		if (!result.isValid())
 			return result;
 
+		stateStackChanged = true;
+
 		// return success
 		return { };
 	}
-
 	util::Expected<void> DirectXApp::pushGameState(GameState* const gameState)
 	{
 		// handle errors
 		util::Expected<void> result;
 
-		// pause the current state
+		// pause the current states
 		for (std::deque<GameState*>::reverse_iterator it = gameStates.rbegin(); it != gameStates.rend(); it++)
 		{
 			result = (*it)->pause();
@@ -267,10 +246,11 @@ namespace core
 		if (!result.isValid())
 			return result;
 
+		stateStackChanged = true;
+		
 		// return success
 		return { };
 	}
-
 	util::Expected<void> DirectXApp::popGameState()
 	{
 		// handle errors
@@ -293,66 +273,16 @@ namespace core
 				return result;
 		}
 
+		stateStackChanged = true;
+
 		// return success
 		return { };
 	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////// Observers ////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-
-	void DirectXApp::addInputHandlerObserver(GameState* const gameState) const
+	void DirectXApp::getActiveStates(std::deque<GameState*>& stateQueue) const
 	{
-		ih->addObserver(gameState);
+		stateQueue = gameStates;
 	}
 
-	void DirectXApp::removeInputHandlerObserver(GameState* const gameState) const
-	{
-		ih->removeObserver(gameState);
-	}
-
-	/////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////// Resizing ////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<void> DirectXApp::onResize() const
-	{
-#ifndef NDEBUG
-		util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("The window was resized. The game graphics must be updated!");
-#endif
-		if (!d3d->onResize(d2d).wasSuccessful())
-			return std::runtime_error("Unable to resize Direct3D resources!");
-
-		// return success
-		return {};
-	}
-
-	util::Expected<void> DirectXApp::checkFullscreen()
-	{
-		if (hasStarted)
-		{
-			util::Expected<bool> switchFullscreenState = d3d->switchFullscreen();
-			if (switchFullscreenState.isValid())
-			{
-				if (switchFullscreenState.get())
-				{	// fullscreen mode changed, pause the application, resize everything and unpause the application again
-					isPaused = true;
-					timer->stop();
-					onResize();
-					timer->start();
-					isPaused = false;
-				}
-			}
-			else
-				return switchFullscreenState;
-		}
-
-		return { };
-	}
-
-	util::Expected<void> DirectXApp::toggleFullscreen() const
-	{
-		return d3d->toggleFullscreen(d2d);
-	}
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////// Frame Statistics ///////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -363,7 +293,7 @@ namespace core
 		nFrames++;
 
 		// compute average statistics over one second
-		if ((timer->getTotalTime() - elapsedTime) >= 1.0)
+		if ((coreComponent->timer->getTotalTime() - elapsedTime) >= 1.0)
 		{
 			// set fps and mspf
 			fps = nFrames;
@@ -374,12 +304,12 @@ namespace core
 				// create FPS information text layout
 				std::wostringstream outFPS;
 				outFPS.precision(6);
-				outFPS << "Resolution: " << d3d->getCurrentWidth() << " x " << d3d->getCurrentHeight() << " @ " << d3d->getCurrentRefreshRateNum() / d3d->getCurrentRefreshRateDen() << " Hz" << std::endl;
-				outFPS << "Mode #" << d3d->getCurrentModeIndex()+1 << " of " << d3d->getNumberOfSupportedModes() << std::endl;
+				outFPS << "Resolution: " << graphicsComponent->getCurrentWidth() << " x " << graphicsComponent->getCurrentHeight() << " @ " << graphicsComponent->getCurrentRefreshRateNum() / graphicsComponent->getCurrentRefreshRateDen() << " Hz" << std::endl;
+				outFPS << "Mode #" << graphicsComponent->get3DComponent().getCurrentModeIndex() + 1 << " of " << graphicsComponent->get3DComponent().getNumberOfSupportedModes() << std::endl;
 				outFPS << "FPS: " << DirectXApp::fps << std::endl;
 				outFPS << "mSPF: " << DirectXApp::mspf << std::endl;
-				
-				if (!(d2d->createTextLayoutFPS(&outFPS, (float)d3d->getCurrentWidth(), (float)d3d->getCurrentHeight())).wasSuccessful())
+
+				if (!(graphicsComponent->getWriteComponent().createTextLayoutFPS(outFPS, (float)graphicsComponent->getCurrentWidth(), (float)graphicsComponent->getCurrentHeight())).wasSuccessful())
 					return std::runtime_error("Critical error: Failed to create the text layout for FPS information!");
 			}
 
@@ -389,26 +319,26 @@ namespace core
 		}
 
 		// return success
-		return { };
-	}
-	/////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////// Timing //////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////
-	void DirectXApp::pauseGame()
-	{
-		isPaused = true;
-		timer->stop();
+		return {};
 	}
 
-	void DirectXApp::resumeGame(bool recreateGraphics, bool restartTimer)
+	/////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////// Pause and Resume ////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////
+	void DirectXApp::pauseApplication()
 	{
-		if (recreateGraphics && hasStarted)
-			onResize();
+		applicationIsPaused = true;
+		coreComponent->timer->stop();
+	}
+	void DirectXApp::resumeApplication(bool recreateGraphics, bool restartTimer)
+	{
+		if (recreateGraphics && applicationStarted)
+			graphicsComponent->onResize(*this);
 
 		if (restartTimer)
 		{
-			timer->start();
-			isPaused = false;
+			coreComponent->timer->start();
+			applicationIsPaused = false;
 		}
 	}
 
@@ -417,24 +347,34 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<void> DirectXApp::onNotify(const int event)
 	{
+		// error handling
+		util::Expected<void> checkingFullscreen;
+
+		// switch depending on the event
 		switch (event)
 		{
 		case input::Events::PauseApplication:
-			pauseGame();
+			pauseApplication();
 			break;
+
 		case input::Events::ResumeApplication:
-			resumeGame(false, true);
+			resumeApplication(false, true);
 			break;
+
 		case input::Events::ChangeResolution:
-			resumeGame(true, false);
+			resumeApplication(true, false);
 			break;
+
 		case input::Events::SwitchFullscreen:
-			if (!checkFullscreen().wasSuccessful())
-				return std::runtime_error("Critital error: Unable to check fullscreen state!");
+			checkingFullscreen = graphicsComponent->checkFullscreen(*this, *coreComponent->timer, applicationStarted, applicationIsPaused);
+			if (!checkingFullscreen.wasSuccessful())
+				return checkingFullscreen;
 			break;
+
 		case input::Events::WindowChanged:
-			resumeGame(true, true);
+			resumeApplication(true, true);
 			break;
+
 		default:
 			break;
 		}
@@ -443,358 +383,65 @@ namespace core
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////// Mouse Position ///////////////////////////////////////////
+	////////////////////////////// Components ///////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	long DirectXApp::getMouseX() const
+	CoreComponent& DirectXApp::getCoreComponent() const
 	{
-		return ih->getMouseX();
+		return *coreComponent;
 	}
-
-	long DirectXApp::getMouseY() const
+	fileSystem::FileSystemComponent& DirectXApp::getFileSystemComponent() const
 	{
-		return ih->getMouseY();
+		return *fileSystemComponent;
+	}
+	graphics::GraphicsComponent& DirectXApp::getGraphicsComponent() const
+	{
+		return *graphicsComponent;
+	}
+	input::InputComponent& DirectXApp::getInputComponent() const
+	{
+		return *inputComponent;
+	}
+	audio::AudioComponent& DirectXApp::getAudioComponent() const
+	{
+		return *audioComponent;
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////// Key Bindings /////////////////////////////////////////////
+	////////////////////////////// Resize ///////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	void DirectXApp::getKeysMappedToCommand(const input::GameCommands gameCommand, std::vector<std::vector<input::BindInfo> >& map) const
+	util::Expected<void> DirectXApp::onResize()
 	{
-		ih->getKeysMappedToCommand(gameCommand, map);
+		return graphicsComponent->onResize(*this);
 	}
 
-	void DirectXApp::getCommandsMappedToGameAction(const input::GameCommands gameCommand, std::vector<input::GameCommand*>& commands) const
-	{
-		ih->getCommandsMappedToGameAction(gameCommand, commands);
-	}
-
-	const util::Expected<std::wstring> DirectXApp::getKeyName(const unsigned int keyCode) const
-	{
-		return ih->getKeyName(keyCode);
-	}
-
-	void DirectXApp::saveKeyBindings() const
-	{
-		ih->saveGameCommands();
-	}
-
-	void DirectXApp::loadKeyBindings() const
-	{
-		ih->loadGameCommands();
-	}
-
-	void DirectXApp::enableListeningForInput() const
-	{
-		ih->enableListening();
-	}
-
-	void DirectXApp::disableListeningForInput() const
-	{
-		ih->disableListening();
-	}
-
-	void DirectXApp::addNewCommand(input::GameCommands gameCommand, input::GameCommand& command) const
-	{
-		ih->insertNewCommand(gameCommand, command);
-	}
-	
 	/////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////// Folders //////////////////////////////////////////////////
+	////////////////////////////// Event Queue //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	bool DirectXApp::getPathToMyDocuments()
+	util::Expected<void> DirectXApp::dispatchMessages()
 	{
-		PWSTR docPath = NULL;
+		// error handling
+		util::Expected<void> result;
 
-#ifndef NDEBUG
-		HRESULT hr = SHGetKnownFolderPath(FOLDERID_Documents, NULL, NULL, &docPath);
-#else
-		SHGetKnownFolderPath(FOLDERID_Documents, NULL, NULL, &docPath);
-#endif
-
-		// debug mode only: make sure the operation succeeded
-#ifndef NDEBUG
-		if (FAILED(hr))
-			return false;
-#endif
-		// store the path
-		pathToMyDocuments = docPath; 
-
-		// delete the wstring pointer to avoid memory leak
-		::CoTaskMemFree(static_cast<void*>(docPath));
-
-		// set up log and configuration paths
-		
-		// append custom folder to path
-
-		// log folder
-		std::wstringstream path;
-		path << pathToMyDocuments << L"\\bell0bytes\\bell0tutorials\\Logs";
-		pathToLogFiles = path.str();
-
-		// settings folder
-		path.str(std::wstring());
-		path.clear();
-		path << pathToMyDocuments << L"\\bell0bytes\\bell0tutorials\\Settings";
-		pathToUserConfigurationFiles = path.str();
-
-		// data folder
-		path.str(std::wstring());
-		path.clear();
-		path << pathToMyDocuments << L"\\bell0bytes\\bell0tutorials\\Data";
-		pathToDataFolder = path.str();
-
-		// artwork folder
-		path.str(std::wstring());
-		path.clear();
-		path << pathToDataFolder << L"\\Artwork";
-		pathToArtworkFolder = path.str();
-
-		// music folder
-		path.str(std::wstring());
-		path.clear();
-		path << pathToDataFolder << L"\\Music";
-		pathToMusicFolder = path.str();
-
-		// return success
-		return true;
-	}
-
-	bool DirectXApp::getPathToApplicationDataFolders()
-	{
-		HRESULT hr;
-		PWSTR appDataPath = NULL;
-
-		// get and store path to local app data
-#ifndef NDEBUG
-		hr = SHGetKnownFolderPath(FOLDERID_LocalAppData, NULL, NULL, &appDataPath);
-#else
-		SHGetKnownFolderPath(FOLDERID_LocalAppData, NULL, NULL, &appDataPath);
-#endif
-		pathToLocalAppData = appDataPath;
-
-		// get and store path to roaming app data
-		appDataPath = NULL;
-
-#ifndef NDEBUG
-		hr = SHGetKnownFolderPath(FOLDERID_RoamingAppData, NULL, NULL, &appDataPath);
-#else
-		SHGetKnownFolderPath(FOLDERID_RoamingAppData, NULL, NULL, &appDataPath);
-#endif
-		pathToRoamingAppData = appDataPath;
-
-		// get and store path to program data
-		appDataPath = NULL;
-
-#ifndef NDEBUG
-		hr = SHGetKnownFolderPath(FOLDERID_ProgramData, NULL, NULL, &appDataPath);
-#else
-		SHGetKnownFolderPath(FOLDERID_ProgramData, NULL, NULL, &appDataPath);
-#endif
-		pathToProgramData = appDataPath;
-
-		// delete the wstring pointer to avoid memory leak
-		::CoTaskMemFree(static_cast<void*>(appDataPath));
-
-		
-		// create subdirectories
-
-		// append custom folder to local data path
-		std::wstringstream path;
-		path << pathToLocalAppData << "\\" << manufacturerName << "\\" << applicationName << "\\" << applicationVersion << "\\";
-		pathToLocalAppData = path.str();
-
-		// Create the path (including all sub-directories) if it doesn't already exist
-		if (FAILED(SHCreateDirectoryEx(NULL, pathToLocalAppData.c_str(), NULL)))
-			return false;
-
-		// append custom folder to roaming data path
-		path.str(std::wstring());
-		path.clear();
-		path << pathToRoamingAppData << "\\" << manufacturerName << "\\" << applicationName << "\\" << applicationVersion << "\\";
-		pathToRoamingAppData = path.str();
-
-		// Create the path (including all sub-directories) if it doesn't already exist
-		if (FAILED(SHCreateDirectoryEx(NULL, pathToRoamingAppData.c_str(), NULL)))
-			return false;
-
-		// append custom folder to application data path
-		path.str(std::wstring());
-		path.clear();
-		path << pathToProgramData << "\\" << manufacturerName << "\\" << applicationName << "\\" << applicationVersion << "\\";
-		pathToProgramData = path.str();
-
-		// Create the path (including all sub-directories) if it doesn't already exist
-		if (FAILED(SHCreateDirectoryEx(NULL, pathToProgramData.c_str(), NULL)))
-			return false;
-
-		// set file paths
-		keyBindingsFile = pathToLocalAppData + L"keyBindings.dat";
-
-		// return success
-		return true;
-	}
-
-	void DirectXApp::createLoggingService()
-	{
-		// create directory (if it does not exist already)
-		HRESULT hr;
-		hr = SHCreateDirectory(NULL, pathToLogFiles.c_str());
-
-		// debug mode only: make sure the operator succeeded
-#ifndef NDEBUG
-		if (FAILED(hr))
-			throw std::runtime_error("Unable to create directory!");
-#endif
-
-		// append name of the log file to the path
-		std::wstring logFile = pathToLogFiles + L"\\bell0engine.log";
-		
-		// create file logger
-		std::shared_ptr<util::Logger<util::FileLogPolicy> > engineLogger(new util::Logger<util::FileLogPolicy>(logFile));
-
-		// set logger to active
-		activeFileLogger = true;
-
-		// set name of current thread
-		engineLogger->setThreadName("mainThread");
-
-		// register the logging service
-		util::ServiceLocator::provideFileLoggingService(engineLogger);
-
-#ifndef NDEBUG
-		// print starting message
-		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The file logger was created successfully.");
-#endif
-	}
-
-	bool DirectXApp::checkConfigurationFile()
-	{
-		// create directory (if it does not exist already)
-		HRESULT hr;
-		hr = SHCreateDirectory(NULL, pathToUserConfigurationFiles.c_str());
-#ifndef NDEBUG
-		if (FAILED(hr))
-			return false;
-#endif
-		// append name of the log file to the path
-		std::wstring pathToPrefFile = pathToUserConfigurationFiles + L"\\" + userPrefFile; // L"\\bell0prefs.lua";
-
-		// the directory exists, check if the log file is accessible
-		std::ifstream prefStream(pathToPrefFile.c_str());
-		if (prefStream.good())
+		while (!eventQueue.isEmpty())
 		{
-			// the file exists and can be read
-			if (prefStream.peek() == std::ifstream::traits_type::eof())
-			{
-				// the file is empty, create it
-				try
-				{
-					util::Logger<util::FileLogPolicy> prefFileCreator(pathToPrefFile.c_str());
-					std::stringstream printPref;
-					printPref << "config =\r\n{ \r\n\tfullscreen = false,\r\n\tresolution = { width = 800, height = 600 }\r\n}";
-					prefFileCreator.print<util::config>(printPref.str());
-				}
-				catch (std::runtime_error)
-				{
-					return false;
-				}
-			}
-		}
-		else
-		{
-			// the file does not exist --> create it
-			try 
-			{ 
-				util::Logger<util::FileLogPolicy> prefFileCreator(pathToPrefFile.c_str());
-				std::stringstream printPref;
-				printPref << "config =\r\n{ \r\n\tfullscreen = false,\r\n\tresolution = { width = 800, height = 600 }\r\n}";
-				prefFileCreator.print<util::config>(printPref.str());
-			}
-			catch (std::runtime_error)
-			{
-				return false;
-			}
+			// get the front message
+			Depesche depesche = eventQueue.dequeue();
+
+			// check whether the receiver actually exists
+			DepescheDestination* destination = depesche.destination;
+			if (destination)
+				// the destination is valid
+				result = destination->onMessage(depesche);
+
+			if (!result.isValid())
+				return result;
 		}
 
-		validUserConfigurationFile = true;
-		return true;
-	}
-
-	util::Expected<void> DirectXApp::saveConfiguration(const unsigned int width, const unsigned int height, const unsigned int index, const bool fullscreen) const
-	{
-		// create directory (if it does not exist already)
-		HRESULT hr;
-		hr = SHCreateDirectory(NULL, pathToUserConfigurationFiles.c_str());
-#ifndef NDEBUG
-		if (FAILED(hr))
-			return std::runtime_error("Critical error: unable to get path to 'My Documents' folder!");
-#endif
-		// append name of the log file to the path
-		std::wstring pathToPrefFile = pathToUserConfigurationFiles + L"\\" + userPrefFile; // L"\\bell0prefs.lua";
-
-		  // the directory exists, check if the log file is accessible
-		std::ifstream prefStream(pathToPrefFile.c_str());
-		if (prefStream.good())
-		{
-			// the file exists and can be read
-			try
-			{
-				util::Logger<util::FileLogPolicy> prefFileCreator(pathToPrefFile.c_str());
-				std::stringstream printPref;
-				printPref << "config =\r\n{ \r\n\tfullscreen = " << std::boolalpha << fullscreen << ",\r\n\tresolution = { width = " << width << ", height = " << height << ", index = " << index << " }\r\n}";
-				prefFileCreator.print<util::config>(printPref.str());
-			}
-			catch (std::exception& e)
-			{
-				return e;
-			}
-		}
-		else
-		{
-			// the file does not exist --> create it
-			try
-			{
-				util::Logger<util::FileLogPolicy> prefFileCreator(pathToPrefFile.c_str());
-				std::stringstream printPref;
-				printPref << "config =\r\n{ \r\n\tfullscreen = " << std::boolalpha << fullscreen << ",\r\n\tresolution = { width = " << width << ", height = " << height << ", index = " << index << " }\r\n}";
-				prefFileCreator.print<util::config>(printPref.str());
-			}
-			catch (std::exception& e)
-			{
-				return e;
-			}
-		}
-
-		// return success
 		return { };
 	}
 
-	const std::wstring DirectXApp::openFile(const fileSystem::DataFolders dataFolder, const std::wstring& filename) const
+	void DirectXApp::addMessage(Depesche& depesche)
 	{
-		std::wstringstream file;
-
-		if (dataFolder == fileSystem::DataFolders::Data)
-		{
-			// the file is in the main data folder
-			file << pathToDataFolder << L"\\" << filename;
-
-			return file.str();
-		}
-
-		if (dataFolder < fileSystem::DataFolders::EndFolders)
-		{
-			// the file is in a main folder
-			file << pathToDataFolder << L"\\" << enumToString(dataFolder) << L"\\" << filename;
-			return file.str();
-		}
-		
-		if (dataFolder > fileSystem::DataFolders::EndFolders && dataFolder < fileSystem::DataFolders::EndArtworkSubFolders)
-		{
-			// the file is in an artwork subfolder
-			file << pathToArtworkFolder << L"\\" << enumToString(dataFolder) << L"\\" << filename;
-			return file.str();
-		}
-		
-		return L"Unable to locate file!";
+		eventQueue.enqueue(depesche);
 	}
 }

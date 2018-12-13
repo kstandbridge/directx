@@ -12,10 +12,9 @@
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
 // c++ includes
-#include <set>
-#include <unordered_map>
+#include <unordered_set>
 
-// bell0bytes includes
+// bell0bytes util
 #include "expected.h"
 
 // CLASSES //////////////////////////////////////////////////////////////////////////////
@@ -34,18 +33,16 @@ namespace util
 	public:
 		virtual ~Observer() {};
 		
-		virtual util::Expected<void> onNotify(const int) { return {}; };
-		virtual util::Expected<bool> onNotify(input::InputHandler* const /*bi*/, const bool /*listening*/) { return true; };
+		virtual Expected<void> onNotify(const int) { return {}; };
 	};
 
 	class Subject
 	{
 	private:
-		std::set<Observer*> observers;					// a set of observers				
+		std::unordered_set<Observer*> observers;					// a set of observers				
 
 	protected:
-		util::Expected<void> notify(const int) const;
-		util::Expected<void> notify(input::InputHandler* const ih, const bool) const;
+		Expected<void> notify(const int) const;
 
 	public:
 		Subject() {};

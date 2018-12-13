@@ -14,6 +14,10 @@
 // bell0bytes core
 #include "states.h"
 
+#include <d2d1_3.h>
+#include <dwrite_3.h>
+#include <wrl.h>
+
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
 namespace core
 {
@@ -23,6 +27,11 @@ namespace core
 namespace graphics
 {
 	class AnimatedSprite;
+}
+
+namespace audio
+{
+	struct SoundEvent;
 }
 
 namespace UI
@@ -54,6 +63,7 @@ namespace UI
 		// the menu buttons
 		std::deque<AnimatedButton*> menuButtons;
 		int currentlySelectedButton;
+		audio::SoundEvent* buttonClickSound;
 		
 		// list of actions (paged)
 		unsigned int currentPage;
@@ -74,16 +84,13 @@ namespace UI
 		util::Expected<void> initializeButtons();
 
 	protected:
-		KeyMapMenuState(core::DirectXApp* const app, const std::wstring& name);
+		KeyMapMenuState(core::DirectXApp& app, const std::wstring& name);
 
 	public:
 		virtual ~KeyMapMenuState();
 
 		// singleton: get instance
-		static KeyMapMenuState& createInstance(core::DirectXApp* const app, const std::wstring& name);
-
-		// observer: on notification
-		util::Expected<bool> onNotify(input::InputHandler* const, const bool) override;
+		static KeyMapMenuState& createInstance(core::DirectXApp& app, const std::wstring& name);
 
 		// initialization
 		virtual util::Expected<void> initialize() override;
@@ -94,13 +101,16 @@ namespace UI
 		virtual util::Expected<void> resume() override;
 
 		// user input
-		virtual util::Expected<bool> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
+		virtual util::Expected<void> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
 		virtual util::Expected<void> update(const double deltaTime) override;
 
 		// render the scene
 		virtual util::Expected<void> render(const double farSeer) override;
 
 		// change key binding
-		util::Expected<bool> changeKeyBinding();
+		util::Expected<void> changeKeyBinding();
+
+		// handle message
+		virtual util::Expected<void> onMessage(const core::Depesche&) override;
 	};
 }

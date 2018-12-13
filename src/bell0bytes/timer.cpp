@@ -8,6 +8,7 @@
 
 // bell0bytes util
 #include "serviceLocator.h"
+#include "expected.h"
 
 namespace core
 {
@@ -167,5 +168,4 @@ namespace core
 				return std::runtime_error("Unable to query the performance counter!");
 		}
 	}
-
 }

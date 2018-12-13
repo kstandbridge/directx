@@ -14,6 +14,8 @@
 // bell0bytes include
 #include "states.h"
 
+#include <d3d11.h>
+
 // DEFINITIONS //////////////////////////////////////////////////////////////////////////
 namespace core
 {
@@ -23,6 +25,11 @@ namespace core
 namespace graphics
 {
 	class AnimatedSprite;
+}
+
+namespace audio
+{
+	struct SoundEvent;
 }
 
 namespace UI
@@ -40,10 +47,14 @@ namespace UI
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> titleLayout;
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> fullscreenLayout;
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> resolutionLayout;
+		Microsoft::WRL::ComPtr<IDWriteTextLayout4> soundEffectsVolumeLayout;
+		Microsoft::WRL::ComPtr<IDWriteTextLayout4> musicVolumeLayout;
+
 		
 		// the menu buttons
 		std::deque<AnimatedButton*> menuButtons;
 		int currentlySelectedButton;
+		audio::SoundEvent* buttonClickSound;
 
 		// screen resolution options
 		const DXGI_MODE_DESC* supportedModes;
@@ -55,16 +66,13 @@ namespace UI
 		bool fullscreen;
 
 		// private constructor
-		OptionsMenuState(core::DirectXApp* const app, const std::wstring& name);
+		OptionsMenuState(core::DirectXApp& app, const std::wstring& name);
 	
 	public:
 		virtual ~OptionsMenuState();
 
 		// singleton: get instance
-		static OptionsMenuState& createInstance(core::DirectXApp* const app, const std::wstring& name);
-
-		// observer: on notification
-		util::Expected<bool> onNotify(input::InputHandler* const, const bool) override;
+		static OptionsMenuState& createInstance(core::DirectXApp& app, const std::wstring& name);
 
 		// initialization
 		virtual util::Expected<void> initialize() override;
@@ -77,10 +85,13 @@ namespace UI
 		virtual util::Expected<void> resume() override;
 
 		// user input
-		virtual util::Expected<bool> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
+		virtual util::Expected<void> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
 		virtual util::Expected<void> update(const double deltaTime) override;
 
 		// render the scene
 		virtual util::Expected<void> render(const double farSeer) override;
+
+		// handle message
+		virtual util::Expected<void> onMessage(const core::Depesche&) override;
 	};
 }

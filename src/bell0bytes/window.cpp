@@ -11,15 +11,21 @@
 #pragma comment(lib, "liblua53.a")
 
 // bell0bytes core
-#include "window.h"
 #include "app.h"
+#include "window.h"
+
+// bell0bytes resources
+#include "resource.h"
 
 // bell0bytes util
 #include "serviceLocator.h"
 #include "stringConverter.h"
 
-// bell0bytes resources
-#include "resource.h"
+// bell0bytes file system
+#include "fileSystemComponent.h"
+
+// bell0bytes input
+#include "gameCommands.h"
 
 // METHODS //////////////////////////////////////////////////////////////////////////////
 
@@ -43,13 +49,13 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Constructors /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	Window::Window(DirectXApp* const dxApp, LPCWSTR windowTitle) : mainWindow(NULL), dxApp(dxApp), clientWidth(200), clientHeight(200), isMinimized(false), isMaximized(false), isResizing(false)
+	Window::Window(DirectXApp& dxApp, const HINSTANCE& hInstance, LPCWSTR windowTitle) : mainWindow(NULL), dxApp(dxApp), clientWidth(200), clientHeight(200), isMinimized(false), isMaximized(false), isResizing(false)
 	{
 		// this is necessary to forward messages
 		window = this;
 
 		// initialize the window
-		util::Expected<void> windowInitialization = this->init(windowTitle);
+		util::Expected<void> windowInitialization = this->init(hInstance, windowTitle);
 		if (!windowInitialization.wasSuccessful())
 		{
 			// log the error
@@ -62,11 +68,10 @@ namespace core
 				util::ServiceLocator::getFileLogger()->print<util::SeverityType::error>(std::stringstream(errorMessage.str()));
 
 				// throw an error
-				throw std::runtime_error("Window creation failed!");
+				throw e;
 			}
 		}
 	}
-
 	Window::~Window()
 	{
 		// log
@@ -76,9 +81,10 @@ namespace core
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Window Creation //////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<void> Window::init(LPCWSTR windowTitle)
+	util::Expected<void> Window::init(const HINSTANCE& hInstance, LPCWSTR windowTitle)
 	{	
-		const HINSTANCE& appInstance = dxApp->getApplicationInstance();
+		const HINSTANCE& appInstance = hInstance;
+
 		// specify the window class description
 		WNDCLASSEX wc;
 
@@ -118,7 +124,7 @@ namespace core
 		UpdateWindow(mainWindow);
 
 		// register the application class as observer
-		addObserver(dxApp);
+		addObserver(&dxApp);
 
 		// log and return success
 		util::ServiceLocator::getFileLogger()->print<util::SeverityType::info>("The main window was successfully created.");
@@ -238,26 +244,24 @@ namespace core
 	////////////////////////////// Notification /////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
 	void notify()
-	{
-		
-	}
+	{ }
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// Utility Functions ////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
 	void Window::readDesiredResolution()
 	{
-		if (dxApp->hasValidConfigurationFile())
+		if (dxApp.getFileSystemComponent().hasValidConfigurationFile())
 		{
 			// configuration file exists, try to read from it
-			std::wstring pathToPrefFile = dxApp->getPathToConfigurationFiles() + L"\\bell0prefs.lua";
+			std::wstring pathToPrefFile = dxApp.getFileSystemComponent().getPathToConfigurationFiles() + L"\\bell0prefs.lua";
 
 			try
 			{
 				sol::state lua;
 				lua.script_file(util::StringConverter::ws2s(pathToPrefFile));
 
-				// read from the configuration file, default to 200 x 200
+				// read from the configuration file, default to 1920 x 1080
 				clientWidth = lua["config"]["resolution"]["width"].get_or(1920);
 				clientHeight = lua["config"]["resolution"]["height"].get_or(1080);
 #ifndef NDEBUG
@@ -268,7 +272,7 @@ namespace core
 			}
 			catch (std::exception)
 			{
-				util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("Unable to read configuration file. Starting with default resolution: 200 x 200");
+				util::ServiceLocator::getFileLogger()->print<util::SeverityType::warning>("Unable to read configuration file. Starting with default resolution: 1920 x 1080");
 			}
 		}
 	}

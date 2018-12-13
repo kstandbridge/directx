@@ -1,16 +1,32 @@
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
+// c++ stringstream
+#include <sstream>
+
 // bell0bytes core
 #include "app.h"
 #include "playState.h"
 
 // bell0bytes UI
 #include "HeadsUpDisplayState.h"
-#include "mainMenuState.h"
+//#include "mainMenuState.h"
+#include "gameMenuState.h"
 
 // bell0bytes input
 #include "gameCommands.h"
+#include "inputComponent.h"
 #include "inputHandler.h"
+
+// bell0bytes graphics
+#include "sprites.h"
+
+// bell0bytes graphics
+#include "graphicsComponent.h"
+#include "graphicsComponentWrite.h"
+
+// bell0bytes file system
+#include "fileSystemComponent.h"
+
 
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace UI
@@ -18,7 +34,7 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	HeadsUpDisplayState::HeadsUpDisplayState(core::DirectXApp* const app, const std::wstring& name) : GameState(app, name)
+	HeadsUpDisplayState::HeadsUpDisplayState(core::DirectXApp& dxApp, const std::wstring& name) : GameState(dxApp, name)
 	{
 
 	}
@@ -28,9 +44,9 @@ namespace UI
 
 	}
 
-	HeadsUpDisplayState& HeadsUpDisplayState::createInstance(core::DirectXApp* const app, const std::wstring& stateName)
+	HeadsUpDisplayState& HeadsUpDisplayState::createInstance(core::DirectXApp& dxApp, const std::wstring& stateName)
 	{
-		static HeadsUpDisplayState instance(app, stateName);
+		static HeadsUpDisplayState instance(dxApp, stateName);
 		return instance;
 	}
 
@@ -42,34 +58,101 @@ namespace UI
 		// handle errors
 		util::Expected<void> result;
 
-		// add to observer list of the input handler
-		dxApp->addInputHandlerObserver(this);
-
-		// position mouse at the center of the screen
-		if (!SetCursorPos(dxApp->getCurrentWidth() / 2, dxApp->getCurrentHeight() / 2))
-			return std::runtime_error("Critical error: Unable to set cursor position!");
-
 		// hide the standard cursor
 		ShowCursor(false);
 
 		// allow mouse and keyboard input
-		dxApp->activeMouse = true;
-		dxApp->activeKeyboard = true;
+		dxApp.getInputComponent().getInputHandler().activeMouse = false;
+		dxApp.getInputComponent().getInputHandler().activeKeyboard = true;
 		isPaused = false;
 
 		if (firstCreation)
 		{
 			// create text formats
-			result = d2d->createTextFormat(L"Segoe UI", 72.0f, DWRITE_TEXT_ALIGNMENT_CENTER, hudFormat);
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Segoe UI", 48.0f, DWRITE_TEXT_ALIGNMENT_CENTER, hudFormat);
+			if (!result.isValid())
+				return result;
+
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Segoe UI", 32.0f, DWRITE_TEXT_ALIGNMENT_LEADING, batteryLevelFormat);
 			if (!result.isValid())
 				return result;
 
 			// create text layouts
-			std::wstring hud = L"HUD Overlay";
-			result = d2d->createTextLayoutFromWString(&hud, hudFormat.Get(), (float)dxApp->getCurrentWidth(), 100, hudLayout);
+			std::wostringstream hud;
+			hud << L"Cats still alive: " << nActiveCats;
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(hud, hudFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, hudLayout);
+			if (!result.wasSuccessful())
+				return result;
+
+			std::wstring batteryLevelText = L"Gamepad Battery Level";
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(batteryLevelText, batteryLevelFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, batteryLevelLayout);
 			if (!result.wasSuccessful())
 				return result;
 		}
+
+		// initialize gamepad battery level button
+		std::vector<graphics::AnimationCycleData> animationCycles;
+		graphics::AnimationCycleData cycle;
+		graphics::AnimationData* animations;
+
+		// cycle
+		cycle.name = L"Battery Empty";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 24;
+		cycle.height = 15;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Battery Low";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 24;
+		cycle.height = 15;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Battery Medium";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 24;
+		cycle.height = 15;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Battery Full";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 24;
+		cycle.height = 15;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		// create play button animations
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Icons, L"iconBatteryLevels.png").c_str(), animationCycles); }
+		catch (std::runtime_error& e) { return e; }
+
+		// create sprite
+
+		// add button to the list
+		try { iconBatteryLevel = new graphics::AnimatedSprite(d2d, animations, 0); }
+		catch (std::runtime_error& e) { return e; }
+
+		// clear animation data
+		animationCycles.clear();
+		std::vector<graphics::AnimationCycleData>(animationCycles).swap(animationCycles);
 
 		firstCreation = false;
 
@@ -91,8 +174,8 @@ namespace UI
 	util::Expected<void> HeadsUpDisplayState::resume()
 	{
 		// allow mouse and keyboard input
-		dxApp->activeMouse = true;
-		dxApp->activeKeyboard = true;
+		dxApp.getInputComponent().getInputHandler().activeMouse = true;
+		dxApp.getInputComponent().getInputHandler().activeKeyboard = true;
 
 		isPaused = false;
 
@@ -103,45 +186,43 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// User Input //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<bool> HeadsUpDisplayState::onNotify(input::InputHandler* const ih, const bool listening)
+	util::Expected<void> HeadsUpDisplayState::onMessage(const core::Depesche& depesche)
 	{
-		if (!isPaused)
-			if (!listening)
-				return handleInput(ih->activeKeyMap);
+		if (depesche.type == core::DepescheTypes::ActiveKeyMap)
+		{
+			input::InputHandler* ih = (input::InputHandler*)depesche.sender;
+
+			if (!isPaused)
+				if (!ih->isListening())
+					// handle interface messages
+					return handleInput(ih->activeKeyMap);
+		}
+		else if(depesche.type == core::DepescheTypes::Damage)
+			nActiveCats = *(unsigned int*)depesche.message;
 
 		// return success
-		return true;
+		return { };
 	}
 
-	util::Expected<bool> HeadsUpDisplayState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& /*activeKeyMap*/)
+	util::Expected<void> HeadsUpDisplayState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
 	{
-		if (isPaused)
-			return true;
-
 		// act on user input
-		//for (auto x : activeKeyMap)
-		//{
-		//	switch (x.first)
-		//	{
-		//	case input::Select:
-		//		// continue game
-		//		if (!dxApp->popGameState().wasSuccessful())
-		//			return std::runtime_error("Critical error: Unable to pop game menu state!");
-		//		return false;	// notify stack change
+		for (auto x : activeKeyMap)
+		{
+			switch (x.first)
+			{
+			case input::GameCommands::Back:
+				if (!dxApp.pushGameState(&UI::GameMenuState::createInstance(dxApp, L"Game Menu")).wasSuccessful())
+					return std::runtime_error("Critical error: Unable to push game menu state!");
+				break;
 
-		//	case input::GameCommands::Back:
-		//		// back to main menu
-		//		if (!dxApp->changeGameState(&UI::MainMenuState::createInstance(dxApp, L"Main Menu")).wasSuccessful())
-		//			return std::runtime_error("Critical error: Unable to change game state to main menu");
-		//		return false;	// notify stack change
+			case input::GameCommands::ShowFPS:
+				dxApp.toggleFPS();
+				break;
+			}
+		}
 
-		//	case input::GameCommands::ShowFPS:
-		//		dxApp->toggleFPS();
-		//		break;
-		//	}
-		//}
-
-		return true;
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -149,6 +230,26 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<void> HeadsUpDisplayState::update(const double /*deltaTime*/)
 	{
+		if (dxApp.getInputComponent().getInputHandler().activeGamepad)
+		{
+			// get battery level of gamepad
+			unsigned int batteryLevel = dxApp.getInputComponent().getInputHandler().getBatteryLevel();
+			iconBatteryLevel->changeAnimation(batteryLevel);
+		}
+
+		// update cats alive text
+		util::Expected<void> result;
+		hudLayout.ReleaseAndGetAddressOf();
+		std::wostringstream hud;
+		if (nActiveCats > 0)
+			hud << L"Katzen op dem Cosmo senger Wiss: " << nActiveCats;
+		else
+			hud << L"De Cosmo huet d'Katzen verdriwwen!";
+
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(hud, hudFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, hudLayout);
+		if (!result.wasSuccessful())
+			return result;
+
 		// return success
 		return {};
 	}
@@ -160,16 +261,30 @@ namespace UI
 	{
 		if (!isPaused)
 		{
-			d2d->printText(0, 800, hudLayout.Get());
+			if(nActiveCats > 0)
+				dxApp.getGraphicsComponent().getWriteComponent().printText(0, 900, hudLayout.Get());
+			else
+				dxApp.getGraphicsComponent().getWriteComponent().printText(0, 540, hudLayout.Get());
+
+			dxApp.getGraphicsComponent().getWriteComponent().printText(10, 900, batteryLevelLayout.Get(), 0.25f);
+
+			// battery level icon
+			//iconBatteryLevel->draw(1, 50, 1000);
 
 			// print FPS information
-			d2d->printFPS();
+			dxApp.getGraphicsComponent().getWriteComponent().printFPS();
 		}
 		else
-			d2d->printText(0, 800, hudLayout.Get(), 0.25f);
+		{
+			dxApp.getGraphicsComponent().getWriteComponent().printText(0, 800, hudLayout.Get(), 0.25f);
+			dxApp.getGraphicsComponent().getWriteComponent().printText(10, 900, batteryLevelLayout.Get());
+
+			// battery level icon
+			iconBatteryLevel->draw(1, 50, 1000);
+		}
 
 		// print FPS information
-		d2d->printFPS();
+		dxApp.getGraphicsComponent().getWriteComponent().printFPS();
 
 		// return success
 		return {};
@@ -180,8 +295,8 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<void> HeadsUpDisplayState::shutdown()
 	{
-		// remove from the observer list
-		dxApp->removeInputHandlerObserver(this);
+		// delete battery level icon
+		delete iconBatteryLevel;
 
 		isPaused = true;
 

@@ -1,16 +1,35 @@
 // INCLUDES /////////////////////////////////////////////////////////////////////////////
 
-// bell0bytes
+// C++ includes
+#include "sstream"
+
+// bell0bytes core
 #include "app.h"
-#include "optionsMenuState.h"
-#include "gameCommands.h"
-#include "inputHandler.h"
 #include "playState.h"
-#include "sprites.h"
+
+// bell0bytes UI
 #include "buttons.h"
+#include "optionsMenuState.h"
 #include "mainMenuState.h"
 #include "keyMapMenuState.h"
-#include "sstream"
+
+// bell0bytes input
+#include "gameCommands.h"
+#include "inputComponent.h"
+#include "inputHandler.h"
+
+// bell0bytes graphics
+#include "graphicsComponent.h"
+#include "graphicsComponent3D.h"
+#include "sprites.h"
+#include "graphicsComponentWrite.h"
+
+// bell0bytes file system
+#include "fileSystemComponent.h"
+
+// bell0bytes audio
+#include "audioComponent.h"
+
 
 // CLASS METHODS ////////////////////////////////////////////////////////////////////////
 namespace UI
@@ -18,13 +37,15 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////// Constructor and Destructor ////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	OptionsMenuState::OptionsMenuState(core::DirectXApp* const app, const std::wstring& name) : GameState(app, name), currentlySelectedButton(0), wasInFullscreen(dxApp->getFullscreenState()), fullscreen(dxApp->getFullscreenState()), supportedModes(NULL), nSupportedModes(0), currentModeIndex(0)
-	{ }
+	OptionsMenuState::OptionsMenuState(core::DirectXApp& app, const std::wstring& name) : GameState(app, name), currentlySelectedButton(0), wasInFullscreen(dxApp.getGraphicsComponent().getFullscreenState()), fullscreen(dxApp.getGraphicsComponent().getFullscreenState()), supportedModes(NULL), nSupportedModes(0), currentModeIndex(0)
+	{
+		dxApp.getGraphicsComponent().getFullscreenState();
+	}
 
 	OptionsMenuState::~OptionsMenuState()
 	{ }
 
-	OptionsMenuState& OptionsMenuState::createInstance(core::DirectXApp* const app, const std::wstring& stateName)
+	OptionsMenuState& OptionsMenuState::createInstance(core::DirectXApp& app, const std::wstring& stateName)
 	{
 		static OptionsMenuState instance(app, stateName);
 		return instance;
@@ -38,63 +59,80 @@ namespace UI
 		// handle errors
 		util::Expected<void> result;
 
-		// add to observer list of the input handler
-		dxApp->addInputHandlerObserver(this);
-
 		// hide the standard cursor
 		ShowCursor(false);
 
 		// position mouse at the center of the screen
-		if (!SetCursorPos(dxApp->getCurrentWidth() / 2, dxApp->getCurrentHeight() / 2))
+		if (!SetCursorPos(dxApp.getGraphicsComponent().getCurrentWidth() / 2, dxApp.getGraphicsComponent().getCurrentHeight() / 2))
 			return std::runtime_error("Critical error: Unable to set cursor position!");
 
 		// allow only mouse input
-		dxApp->activeMouse = true;
-		dxApp->activeKeyboard = false;
+		dxApp.getInputComponent().getInputHandler().activeMouse = true;
+		dxApp.getInputComponent().getInputHandler().activeKeyboard = false;
 
 		// get fullscreen state
-		fullscreen = dxApp->getFullscreenState();
+		fullscreen = dxApp.getGraphicsComponent().getFullscreenState();
 
 		// get supported modes
-		nSupportedModes = dxApp->getNumberOfSupportedModes();
-		supportedModes = dxApp->getSupportedModes();
-		currentModeIndex = dxApp->getCurrentModeIndex();
+		nSupportedModes = dxApp.getGraphicsComponent().get3DComponent().getNumberOfSupportedModes();
+		supportedModes = dxApp.getGraphicsComponent().get3DComponent().getSupportedModes();
+		currentModeIndex = dxApp.getGraphicsComponent().get3DComponent().getCurrentModeIndex();
 		
 		if (firstCreation)
 		{
 			// create text formats
-			result = d2d->createTextFormat(L"Lucida Handwriting", 128.0f, DWRITE_TEXT_ALIGNMENT_CENTER, titleFormat);
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Lucida Handwriting", 128.0f, DWRITE_TEXT_ALIGNMENT_CENTER, titleFormat);
 			if (!result.isValid())
 				return result;
 
-			result = d2d->createTextFormat(L"Segoe Script", 48.0f, textFormat);
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextFormat(L"Segoe Script", 48.0f, textFormat);
 			if (!result.isValid())
 				return result;
 
 			// create text layouts
 			std::wstring title = L"Game Options";
-			result = d2d->createTextLayoutFromWString(&title, titleFormat.Get(), (float)dxApp->getCurrentWidth(), 200, titleLayout);
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWString(title, titleFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 200, titleLayout);
 			if (!result.isValid())
 				return result;
 
 			std::wostringstream fullscreenText;
 			fullscreenText << L"fullscreen\t\t\t\t\t" << fullscreen;
-			result = d2d->createTextLayoutFromWStringStream(&fullscreenText, textFormat.Get(), (float)dxApp->getCurrentWidth(), 100, fullscreenLayout);
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(fullscreenText, textFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, fullscreenLayout);
 			if (!result.isValid())
 				return result;
 
 			std::wostringstream text;
-			text << L"resolution\t\t\t\t\t" << dxApp->getCurrentWidth() << " x " << dxApp->getCurrentHeight() << " @ " << supportedModes[currentModeIndex].RefreshRate.Numerator / supportedModes[currentModeIndex].RefreshRate.Denominator << " Hz";
-			result = d2d->createTextLayoutFromWStringStream(&text, textFormat.Get(), (float)dxApp->getCurrentWidth(), 100, resolutionLayout);
+			text << L"resolution\t\t\t\t\t" << dxApp.getGraphicsComponent().getCurrentWidth() << " x " << dxApp.getGraphicsComponent().getCurrentHeight() << " @ " << supportedModes[currentModeIndex].RefreshRate.Numerator / supportedModes[currentModeIndex].RefreshRate.Denominator << " Hz";
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(text, textFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, resolutionLayout);
+			if (!result.isValid())
+				return result;
+
+			std::wostringstream soundEffectsVolumeText;
+			float volume = dxApp.getAudioComponent().getVolume(audio::AudioTypes::Sound);
+			soundEffectsVolumeText << L"effects volume\t\t" << volume;
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(soundEffectsVolumeText, textFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, soundEffectsVolumeLayout);
+			if (!result.isValid())
+				return result;
+
+			std::wostringstream musicVolumeText;
+			volume = dxApp.getAudioComponent().getVolume(audio::AudioTypes::Music);
+			musicVolumeText << L"music volume\t\t" << volume;
+			result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(musicVolumeText, textFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, musicVolumeLayout);
 			if (!result.isValid())
 				return result;
 		}
+
+		// create button sound
+		buttonClickSound = new audio::SoundEvent();
+		result = dxApp.getAudioComponent().loadFile(dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Sounds, L"button.wav"), *buttonClickSound, audio::AudioTypes::Sound);
+		if (!result.isValid())
+			return result;
 
 		// initialize buttons
 		currentlySelectedButton = -1;
 		if (!initializeButtons().wasSuccessful())
 			return std::runtime_error("Critical error: Unable to create title buttons!");
-
+		
 		firstCreation = false;
 		isPaused = false;
 	
@@ -158,13 +196,16 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonRefresh.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonRefresh.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
-		auto onClick = [this]
+		auto onClick = [this]() -> util::Expected<void>
 		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
 			this->fullscreen = !this->fullscreen;
-			return true;
+			return { };
 		};
 
 		// add button to the list
@@ -225,14 +266,17 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonLeft.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonLeft.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
-		auto onClickScreenResolutionLeftArrow = [this]
+		auto onClickScreenResolutionLeftArrow = [this]() -> util::Expected<void>
 		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
 			if(this->currentModeIndex > 0)
 				currentModeIndex--;
-			return true;
+			return { };
 		};
 
 		// add button to the list
@@ -293,18 +337,337 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonRight.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonRight.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
-		auto onClickScreenResolutionRightArrow = [this]
+		auto onClickScreenResolutionRightArrow = [this]() -> util::Expected<void>
 		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
 			if (this->currentModeIndex < this->nSupportedModes-1)
 				currentModeIndex++;
-			return true;
+			return { };
 		};
 
 		// add button to the list
 		try { menuButtons.push_back(new AnimatedButton(L"Screen Resolution Right", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickScreenResolutionRightArrow, 4)); }
+		catch (std::exception& e) { return e; }
+
+		// clear animation data
+		animationCycles.clear();
+		std::vector<graphics::AnimationCycleData>(animationCycles).swap(animationCycles);
+
+		/////////////////////////////////////////////////////////////////////////////////////////
+		/////////////////////////////// Music Volume Left Arrow /////////////////////////////////
+		/////////////////////////////////////////////////////////////////////////////////////////
+
+		// cycle
+		cycle.name = L"Left Arrow Normal";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Left Arrow Hover";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Left Arrow Click";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Left Arrow Locked";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		// create play button animations
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonLeft.png").c_str(), animationCycles); }
+		catch (std::runtime_error& e) { return e; }
+
+		auto onClickMusicVolumeLeftArrow = [this]() -> util::Expected<void>
+		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
+			// get volume
+			float volume = dxApp.getAudioComponent().getVolume(audio::AudioTypes::Music);
+			if (volume > 0)
+				volume -= 0.1f;
+			if (volume < 0.09f)
+				volume = 0.0f;
+			
+			// set volume
+			dxApp.getAudioComponent().setVolume(audio::AudioTypes::Music, volume);
+
+			return {};
+		};
+
+		// add button to the list
+		try { menuButtons.push_back(new AnimatedButton(L"Music Volume Left", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickMusicVolumeLeftArrow, 4)); }
+		catch (std::exception& e) { return e; }
+
+		// clear animation data
+		animationCycles.clear();
+		std::vector<graphics::AnimationCycleData>(animationCycles).swap(animationCycles);
+
+		/////////////////////////////////////////////////////////////////////////////////////////
+		/////////////////////////////// Music Volume Right Arrow ////////////////////////////////
+		/////////////////////////////////////////////////////////////////////////////////////////
+
+		// cycle
+		cycle.name = L"Right Arrow Normal";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Right Arrow Hover";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Right Arrow Click";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Right Arrow Locked";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		// create play button animations
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonRight.png").c_str(), animationCycles); }
+		catch (std::runtime_error& e) { return e; }
+
+		auto onClickMusicVolumeRightArrow = [this]() -> util::Expected<void>
+		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
+			// get volume
+			float volume = dxApp.getAudioComponent().getVolume(audio::AudioTypes::Music);
+			if (volume < XAUDIO2_MAX_VOLUME_LEVEL)
+				volume += 0.1f;
+			if (volume > 9.91f)
+				volume = 10;
+
+			// set volume
+			dxApp.getAudioComponent().setVolume(audio::AudioTypes::Music, volume);
+
+			return {};
+		};
+
+		// add button to the list
+		try { menuButtons.push_back(new AnimatedButton(L"Music Volume Right", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickMusicVolumeRightArrow, 4)); }
+		catch (std::exception& e) { return e; }
+
+		// clear animation data
+		animationCycles.clear();
+		std::vector<graphics::AnimationCycleData>(animationCycles).swap(animationCycles);
+
+		/////////////////////////////////////////////////////////////////////////////////////////
+		////////////////////////// Sound Effects Volume Left Arrow //////////////////////////////
+		/////////////////////////////////////////////////////////////////////////////////////////
+
+		// cycle
+		cycle.name = L"Left Arrow Normal";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Left Arrow Hover";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Left Arrow Click";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Left Arrow Locked";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		// create play button animations
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonLeft.png").c_str(), animationCycles); }
+		catch (std::runtime_error& e) { return e; }
+
+		auto onClickSoundEffectsVolumeLeftArrow = [this]() -> util::Expected<void>
+		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
+			// get volume
+			float volume = dxApp.getAudioComponent().getVolume(audio::AudioTypes::Sound);
+			if (volume > 0)
+				volume -= 0.1f;
+			if (volume < 0.09f)
+				volume = 0.0f;
+
+			// set volume
+			dxApp.getAudioComponent().setVolume(audio::AudioTypes::Sound, volume);
+
+			return {};
+		};
+
+		// add button to the list
+		try { menuButtons.push_back(new AnimatedButton(L"Sound Effects Volume Left", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickSoundEffectsVolumeLeftArrow, 4)); }
+		catch (std::exception& e) { return e; }
+
+		// clear animation data
+		animationCycles.clear();
+		std::vector<graphics::AnimationCycleData>(animationCycles).swap(animationCycles);
+
+		/////////////////////////////////////////////////////////////////////////////////////////
+		////////////////////////// Sound Effects Volume Right Arrow /////////////////////////////
+		/////////////////////////////////////////////////////////////////////////////////////////
+
+		// cycle
+		cycle.name = L"Right Arrow Normal";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Right Arrow Hover";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Right Arrow Click";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		cycle.name = L"Right Arrow Locked";
+		cycle.startFrame = 0;
+		cycle.numberOfFrames = 1;
+		cycle.width = 65;
+		cycle.height = 64;
+		cycle.paddingWidth = 0;
+		cycle.paddingHeight = 0;
+		cycle.borderPaddingHeight = cycle.borderPaddingWidth = 0;
+		cycle.rotationCenterX = cycle.rotationCenterY = 0.5f;
+		animationCycles.push_back(cycle);
+
+		// create play button animations
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonRight.png").c_str(), animationCycles); }
+		catch (std::runtime_error& e) { return e; }
+
+		auto onClickSoundEffectsVolumeRightArrow = [this]() -> util::Expected<void>
+		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
+			// get volume
+			float volume = dxApp.getAudioComponent().getVolume(audio::AudioTypes::Sound);
+			if (volume < XAUDIO2_MAX_VOLUME_LEVEL)
+				volume += 0.1f;
+			if (volume > 9.91f)
+				volume = 10;
+
+			// set volume
+			dxApp.getAudioComponent().setVolume(audio::AudioTypes::Sound, volume);
+
+			return {};
+		};
+
+		// add button to the list
+		try { menuButtons.push_back(new AnimatedButton(L"Sound Effects Volume Right", new graphics::AnimatedSprite(d2d, animations, 0, 24), onClickSoundEffectsVolumeRightArrow, 4)); }
 		catch (std::exception& e) { return e; }
 
 		// clear animation data
@@ -361,15 +724,18 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonGamepad.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonGamepad.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
-		auto onClickGamepad = [this]() -> util::Expected<bool>
+		auto onClickGamepad = [this]() -> util::Expected<void>
 		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
 			// open key map menu
-			if (!dxApp->pushGameState(&UI::KeyMapMenuState::createInstance(dxApp, L"Key Map Menu")).wasSuccessful())
-				std::runtime_error("Critical error: Unable to push key map menu to the state stack!");
-			return false;
+			if (!dxApp.pushGameState(&UI::KeyMapMenuState::createInstance(dxApp, L"Key Map Menu")).wasSuccessful())
+				return std::runtime_error("Critical error: Unable to push key map menu to the state stack!");
+			return { };
 		};
 
 		// add button to the list
@@ -430,25 +796,30 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonSave.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonSave.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
-		auto onClickSave = [this]
+		auto onClickSave = [this]() -> util::Expected<void>
 		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
 			// write options to lua file
-			dxApp->saveConfiguration(supportedModes[currentModeIndex].Width, supportedModes[currentModeIndex].Height, currentModeIndex, fullscreen);
+			float soundEffectsVolume = dxApp.getAudioComponent().getVolume(audio::AudioTypes::Sound);
+			float musicVolume = dxApp.getAudioComponent().getVolume(audio::AudioTypes::Music);
+			dxApp.getFileSystemComponent().saveConfiguration(supportedModes[currentModeIndex].Width, supportedModes[currentModeIndex].Height, currentModeIndex, fullscreen, dxApp.getInputComponent().getInputHandler().activeJoystick, dxApp.getInputComponent().getInputHandler().activeGamepad, musicVolume, soundEffectsVolume);
 
 			// activate desired screen resolution and fullscreen mode
-			if (currentModeIndex != dxApp->getCurrentModeIndex())
-				dxApp->changeResolution(currentModeIndex);
+			if (currentModeIndex != dxApp.getGraphicsComponent().get3DComponent().getCurrentModeIndex())
+				dxApp.getGraphicsComponent().changeResolution(currentModeIndex);
 
 			if (fullscreen != wasInFullscreen)
 			{
 				wasInFullscreen = !wasInFullscreen;
-				dxApp->toggleFullscreen();
+				dxApp.getGraphicsComponent().toggleFullscreen();
 			}
 
-			return true;
+			return { };
 		};
 
 		// add button to the list
@@ -509,15 +880,18 @@ namespace UI
 		animationCycles.push_back(cycle);
 
 		// create play button animations
-		try { animations = new graphics::AnimationData(d2d, dxApp->openFile(fileSystem::DataFolders::Buttons, L"buttonBack.png").c_str(), animationCycles); }
+		try { animations = new graphics::AnimationData(d2d, dxApp.getFileSystemComponent().openFile(fileSystem::DataFolders::Buttons, L"buttonBack.png").c_str(), animationCycles); }
 		catch (std::runtime_error& e) { return e; }
 
-		auto onClickBack = [this]() -> util::Expected<bool>
+		auto onClickBack = [this]() -> util::Expected<void>
 		{
+			dxApp.getAudioComponent().playSoundEvent(*buttonClickSound);
+			Sleep(120);
+
 			this->isPaused = true;
-			if (!dxApp->changeGameState(&UI::MainMenuState::createInstance(dxApp, L"Main Menu")).wasSuccessful())
+			if (!dxApp.changeGameState(&UI::MainMenuState::createInstance(dxApp, L"Main Menu")).wasSuccessful())
 				return std::runtime_error("Critical error: Unable to change game state to main menu!");
-			return false;
+			return { };
 		};
 
 		// add button to the list
@@ -549,8 +923,8 @@ namespace UI
 	util::Expected<void> OptionsMenuState::resume()
 	{
 		// allow mouse and keyboard input
-		dxApp->activeMouse = true;
-		dxApp->activeKeyboard = false;
+		dxApp.getInputComponent().getInputHandler().activeMouse = true;
+		dxApp.getInputComponent().getInputHandler().activeKeyboard = false;
 
 		isPaused = false;
 		currentlySelectedButton = -1;
@@ -562,17 +936,19 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////// User Input //////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////
-	util::Expected<bool> OptionsMenuState::onNotify(input::InputHandler* const ih, const bool listening)
+	util::Expected<void> OptionsMenuState::onMessage(const core::Depesche& depesche)
 	{
+		input::InputHandler* ih = (input::InputHandler*)depesche.sender;
+
 		if (!isPaused)
-			if(!listening)
+			if (!ih->isListening())
 				return handleInput(ih->activeKeyMap);
 
 		// return success
-		return true;
+		return { };
 	}
 
-	util::Expected<bool> OptionsMenuState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
+	util::Expected<void> OptionsMenuState::handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap)
 	{
 		// act on user input
 		for (auto x : activeKeyMap)
@@ -587,12 +963,18 @@ namespace UI
 					break;
 
 			case input::ShowFPS:
-				dxApp->toggleFPS();
+				dxApp.toggleFPS();
 				break;
+
+			case input::Back:
+					isPaused = true;
+					if (!dxApp.changeGameState(&UI::MainMenuState::createInstance(dxApp, L"Main Menu")).wasSuccessful())
+						return std::runtime_error("Critical error: Unable to change game state to main menu!");
+					break;
 			}
 		}
 
-		return true;
+		return { };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////
@@ -607,11 +989,11 @@ namespace UI
 			return {};
 
 		// capture mouse
-		if (dxApp->activeMouse)
+		if (dxApp.getInputComponent().getInputHandler().activeMouse)
 		{
 			// get mouse position
-			long mouseX = dxApp->getMouseX();
-			long mouseY = dxApp->getMouseY();
+			long mouseX = dxApp.getInputComponent().getInputHandler().getMouseX();
+			long mouseY = dxApp.getInputComponent().getInputHandler().getMouseY();
 
 			// check if mouse position is inside button rectangle
 			bool buttonSelected = false;
@@ -648,16 +1030,44 @@ namespace UI
 		// update fullscreen text
 		std::wostringstream fullscreenText;
 		fullscreenText << L"fullscreen     " << std::boolalpha << fullscreen;
-		result = d2d->createTextLayoutFromWStringStream(&fullscreenText, textFormat.Get(), (float)dxApp->getCurrentWidth(), 100, fullscreenLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(fullscreenText, textFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, fullscreenLayout);
 		if (!result.isValid())
 			return result;
 
 		// update screen resolution text
 		std::wostringstream screenResolutionText;
 		screenResolutionText << L"resolution\t   " << supportedModes[currentModeIndex].Width << " x " << supportedModes[currentModeIndex].Height << " @ " << supportedModes[currentModeIndex].RefreshRate.Numerator / supportedModes[currentModeIndex].RefreshRate.Denominator << " Hz";
-		result = d2d->createTextLayoutFromWStringStream(&screenResolutionText, textFormat.Get(), (float)dxApp->getCurrentWidth(), 100, resolutionLayout);
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(screenResolutionText, textFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, resolutionLayout);
 		if (!result.isValid())
 			return result;
+
+		// update volume texts
+		std::wostringstream soundEffectsVolumeText;
+		soundEffectsVolumeText.precision(2);
+		float volume = dxApp.getAudioComponent().getVolume(audio::AudioTypes::Sound);
+		soundEffectsVolumeText << L"effects volume\t\t" << volume;
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(soundEffectsVolumeText, textFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, soundEffectsVolumeLayout);
+		if (!result.isValid())
+			return result;
+
+		if(volume <= 0.0f)
+			menuButtons[5]->lock();
+		if (volume >= 10)
+			menuButtons[6]->lock();
+		
+		std::wostringstream musicVolumeText;
+		musicVolumeText.precision(2);
+		volume = dxApp.getAudioComponent().getVolume(audio::AudioTypes::Music);
+		musicVolumeText << L"music volume\t\t" << volume;
+		result = dxApp.getGraphicsComponent().getWriteComponent().createTextLayoutFromWStringStream(musicVolumeText, textFormat.Get(), (float)dxApp.getGraphicsComponent().getCurrentWidth(), 100, musicVolumeLayout);
+		if (!result.isValid())
+			return result;
+
+		if (volume <= 0.0f)
+			menuButtons[3]->lock();
+		if (volume >= 10)
+			menuButtons[4]->lock();
+
 
 		for (auto button : menuButtons)
 			button->update(deltaTime);
@@ -668,6 +1078,7 @@ namespace UI
 			if (currentlySelectedButton == 1)
 				currentlySelectedButton = -1;
 		}
+
 		if (currentModeIndex == nSupportedModes - 1)
 		{
 			menuButtons[2]->lock();
@@ -693,23 +1104,31 @@ namespace UI
 
 		if (!isPaused)
 		{
-			d2d->printText(0, 50, titleLayout.Get());// , 0, -300);
+			dxApp.getGraphicsComponent().getWriteComponent().printText(0, 50, titleLayout.Get());// , 0, -300);
 
-			d2d->printCenteredText(fullscreenLayout.Get(), -50, -130);
+			dxApp.getGraphicsComponent().getWriteComponent().printCenteredText(fullscreenLayout.Get(), -50, -130);
 			menuButtons[0]->drawCentered(1, 0, -180);
 
-			d2d->printCenteredText(resolutionLayout.Get(), -95, -38);
+			dxApp.getGraphicsComponent().getWriteComponent().printCenteredText(resolutionLayout.Get(), -95, -38);
 			menuButtons[1]->drawCentered(1, -50, -90);
 			menuButtons[2]->drawCentered(1, 50, -90);
 
-			menuButtons[3]->drawCentered(2, 0, 200);
-			menuButtons[4]->drawCentered(2, -300, 300);
-			menuButtons[5]->drawCentered(2, 300, 300);
+			dxApp.getGraphicsComponent().getWriteComponent().printCenteredText(musicVolumeLayout.Get(), -275, 60);
+			menuButtons[3]->drawCentered(0.75f, -50, 10);
+			menuButtons[4]->drawCentered(0.75f, 50, 10);
+
+			dxApp.getGraphicsComponent().getWriteComponent().printCenteredText(soundEffectsVolumeLayout.Get(), -275, 125);
+			menuButtons[5]->drawCentered(0.75f, -50, 70);
+			menuButtons[6]->drawCentered(0.75f, 50, 70);
+			
+			menuButtons[7]->drawCentered(2, 0, 200);
+			menuButtons[8]->drawCentered(2, -300, 300);
+			menuButtons[9]->drawCentered(2, 300, 300);
 
 			// print FPS information
-			d2d->printFPS();
+			dxApp.getGraphicsComponent().getWriteComponent().printFPS();
 		}
-		menuButtons[3]->drawCentered(2, 0, 200);
+		menuButtons[7]->drawCentered(2, 0, 200);
 
 		// return success
 		return {};
@@ -720,6 +1139,10 @@ namespace UI
 	/////////////////////////////////////////////////////////////////////////////////////////
 	util::Expected<void> OptionsMenuState::shutdown()
 	{
+		// stop button sound
+		if (buttonClickSound)
+			dxApp.getAudioComponent().stopSoundEvent(*buttonClickSound);
+
 		ShowCursor(false);
 		this->isPaused = true;
 
@@ -728,8 +1151,9 @@ namespace UI
 			delete button;
 		menuButtons.clear();
 
-		// remove from the observer list
-		dxApp->removeInputHandlerObserver(this);
+		// delete sound
+		if (buttonClickSound)
+			delete buttonClickSound;
 
 		// return success
 		return {};

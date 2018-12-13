@@ -28,16 +28,13 @@ namespace UI
 		Microsoft::WRL::ComPtr<IDWriteTextFormat3> gameMenuFormat;	// dummy text
 		Microsoft::WRL::ComPtr<IDWriteTextLayout4> gameMenuLayout;
 
-		GameMenuState(core::DirectXApp* const app, const std::wstring& name);
+		GameMenuState(core::DirectXApp& app, const std::wstring& name);
 
 	public:
 		virtual ~GameMenuState();
 
 		// singleton: get instance
-		static GameMenuState& createInstance(core::DirectXApp* const app, const std::wstring& name);
-
-		// observer: on notification
-		util::Expected<bool> onNotify(input::InputHandler* const, const bool) override;
+		static GameMenuState& createInstance(core::DirectXApp& app, const std::wstring& name);
 
 		// initialization
 		virtual util::Expected<void> initialize() override;
@@ -48,10 +45,13 @@ namespace UI
 		virtual util::Expected<void> resume() override;
 
 		// user input
-		virtual util::Expected<bool> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
+		virtual util::Expected<void> handleInput(std::unordered_map<input::GameCommands, input::GameCommand&>& activeKeyMap) override;
 		virtual util::Expected<void> update(const double deltaTime) override;
 
 		// render the scene
 		virtual util::Expected<void> render(const double farSeer) override;
+
+		// handle message
+		virtual util::Expected<void> onMessage(const core::Depesche&) override;
 	};
 }
